@@ -220,12 +220,23 @@ ubu_prepare() {
       | command sudo debconf-set-selections 2>/dev/null || true
   fi
   if ! grep -rqs 'cppiber/hyprland' /etc/apt/sources.list.d/; then
+    # Direkt mit mitgeliefertem Schlüssel (ubuntu/hyprland-ppa.asc, Fingerprint A54D23B6…F0CCF48E) statt
+    # add-apt-repository: das fragt die Launchpad-API und hing beim Test unbegrenzt, als Launchpad nicht antwortete.
     step "Hyprland-PPA (ppa:cppiber/hyprland) hinzufügen"
-    ubu_apt install -y -qq software-properties-common >/dev/null
-    command sudo add-apt-repository -y ppa:cppiber/hyprland >/dev/null && ok "PPA aktiv" \
-      || fatal "PPA konnte nicht hinzugefügt werden" "sudo add-apt-repository ppa:cppiber/hyprland"
+    local codename; codename="$(. /etc/os-release; echo "${VERSION_CODENAME:-resolute}")"
+    command sudo install -d -m 755 /etc/apt/keyrings
+    command sudo install -m 644 "$UBU_DIR/hyprland-ppa.asc" /etc/apt/keyrings/cppiber-hyprland.asc
+    printf 'Types: deb\nURIs: https://ppa.launchpadcontent.net/cppiber/hyprland/ubuntu/\nSuites: %s\nComponents: main\nSigned-By: /etc/apt/keyrings/cppiber-hyprland.asc\n' "$codename" \
+      | command sudo tee "/etc/apt/sources.list.d/cppiber-ubuntu-hyprland-$codename.sources" >/dev/null
+    ok "PPA eingetragen ($codename)"
   else ok "Hyprland-PPA vorhanden"; fi
-  ubu_apt update -qq
+  ubu_apt -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3 update -qq || true
+  if ! apt-cache policy hyprland 2>/dev/null | grep -q 'ppa.launchpadcontent.net/cppiber'; then
+    fatal "Das Hyprland-PPA ist gerade nicht erreichbar (ppa.launchpadcontent.net)." \
+      "Ohne PPA gibt es kein aktuelles Hyprland (≥ 0.56) für Ubuntu." \
+      "Prüfen:  curl -I https://ppa.launchpadcontent.net/cppiber/hyprland/ubuntu/" \
+      "Später einfach erneut starten – bereits erledigte Schritte werden übersprungen."
+  fi
   step "Build- und Laufzeitpakete (ubuntu/packages.txt)"
   # shellcheck disable=SC2046
   ubu_apt install -y $(grep -v '^#' "$UBU_DIR/packages.txt") \
