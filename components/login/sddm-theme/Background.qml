@@ -13,8 +13,10 @@ Item {
 
     function nextImage() {
         if (imgIdx < imgExts.length) {
-            bgImage.source = Qt.resolvedUrl("current/image." + imgExts[imgIdx])
-            imgIdx++
+            // Index zuerst erhöhen und Quelle leeren: Error -> Error löst in Qt 6.10 kein statusChanged aus
+            const ext = imgExts[imgIdx++]
+            bgImage.source = ""
+            bgImage.source = Qt.resolvedUrl("current/image." + ext)
         } else if (!imageMiss) {
             imageMiss = true
             nextVideo()
@@ -27,7 +29,7 @@ Item {
         fillMode: Image.PreserveAspectCrop
         visible: status === Image.Ready
         onStatusChanged: {
-            if (status === Image.Error) root.nextImage()
+            if (status === Image.Error) Qt.callLater(root.nextImage)
         }
     }
 

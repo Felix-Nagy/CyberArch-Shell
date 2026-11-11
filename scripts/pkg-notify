@@ -8,7 +8,11 @@ pkgs=$(cat | awk 'NF')
 
 n=$(printf '%s\n' "$pkgs" | grep -c .)
 first=$(printf '%s\n' "$pkgs" | head -1)
-ver=$(pacman -Q "$first" 2>/dev/null | awk '{print $2}')
+if command -v pacman >/dev/null 2>&1; then
+    ver=$(pacman -Q "$first" 2>/dev/null | awk '{print $2}')
+else
+    ver=$(dpkg-query -W -f '${Version}' "$first" 2>/dev/null)
+fi
 tname=$(printf '%s' "$first" | cut -c1-16 | tr '[:lower:]' '[:upper:]')
 
 if [ "$n" -gt 1 ]; then

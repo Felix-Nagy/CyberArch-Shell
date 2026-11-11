@@ -8,6 +8,11 @@
 helper() { command -v paru 2>/dev/null || command -v yay 2>/dev/null || true; }
 
 repo_updates() {
+    if ! command -v pacman >/dev/null 2>&1 && command -v apt >/dev/null 2>&1; then
+        # Ubuntu/Debian: "pkg old -> new" wie bei checkupdates
+        apt list --upgradable 2>/dev/null | awk -F'[/ ]' 'NR>1 && NF {o=$0; sub(/.*upgradable from: /,"",o); sub(/\]$/,"",o); print $1" "o" -> "$3}'
+        return
+    fi
     if command -v checkupdates >/dev/null 2>&1; then
         checkupdates 2>/dev/null
     else
@@ -29,7 +34,9 @@ case "$1" in
         ;;
     upgrade)
         h=$(helper)
-        if [ -n "$h" ]; then up="$h -Syu"; else up="sudo pacman -Syu"; fi
+        if [ -n "$h" ]; then up="$h -Syu"
+        elif ! command -v pacman >/dev/null 2>&1 && command -v apt >/dev/null 2>&1; then up="sudo apt update && sudo apt full-upgrade"
+        else up="sudo pacman -Syu"; fi
         run="printf '\033[1;32m[ AUGMENTED ] SYSTEM UPGRADE\033[0m\n\n'; $up; ec=\$?; echo; printf '\033[1;36m>> upgrade finished (exit %s). press ENTER to close.\033[0m ' \"\$ec\"; read _"
         term=""
         for t in "$TERMINAL" kitty foot wezterm alacritty cool-retro-term konsole gnome-terminal xterm; do

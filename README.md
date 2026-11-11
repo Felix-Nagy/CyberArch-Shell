@@ -143,6 +143,20 @@ This is my attempt to recreate Cyberpunk 2077 UI entirely on **Hyprland**, using
 
 ---
 
+## ⌁ Ubuntu (this fork)
+
+This fork runs CyberArch-Shell on **Ubuntu 26.04** too. On a fresh Ubuntu install, run:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Felix-Nagy/CyberArch-Shell/master/ubuntu/setup.sh)
+```
+
+It installs Hyprland from `ppa:cppiber/hyprland`, builds AGS/Astal, Quickshell, mpvpaper and awww from source and
+runs the regular `install.sh`, which detects Ubuntu and routes every pacman/AUR call to apt. Details (German):
+[ubuntu/README.md](ubuntu/README.md). On Arch nothing changes.
+
+---
+
 ## ⌁ Requirements
 
 - **Arch Linux or AUR based distros.** _(Other distros will be available futurely)_

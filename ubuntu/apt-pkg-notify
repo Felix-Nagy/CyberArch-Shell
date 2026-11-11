@@ -1,0 +1,23 @@
+#!/bin/sh
+# apt-Gegenstück zum pacman-Hook: zeigt die Street-Cred-Animation für NEU installierte Pakete.
+#   pre  (DPkg::Pre-Install-Pkgs): bekommt .deb-Pfade auf stdin, merkt sich noch nicht installierte Pakete
+#   post (DPkg::Post-Invoke):      reicht die gemerkten Namen an scripts/pkg-notify weiter
+STATE=/run/cyberpunk-apt-new
+THEME="$(cd "$(dirname "$0")/.." && pwd)"
+
+case "$1" in
+  pre)
+    : >"$STATE"
+    while read -r deb; do
+      case "$deb" in *.deb) ;; *) continue ;; esac
+      name="$(basename "$deb" | cut -d_ -f1)"
+      dpkg-query -W -f '${Status}' "$name" 2>/dev/null | grep -q 'install ok installed' || echo "$name" >>"$STATE"
+    done
+    ;;
+  post)
+    [ -s "$STATE" ] || exit 0
+    "$THEME/scripts/pkg-notify" <"$STATE"
+    rm -f "$STATE"
+    ;;
+esac
+exit 0
