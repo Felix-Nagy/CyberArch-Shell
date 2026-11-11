@@ -89,8 +89,10 @@ ubu_build() { # ubu_build <step>…  (Reihenfolge ist wichtig: astal vor astal-g
 # sonst hängt z. B. die sddm-Frage „Default display manager“ unsichtbar hinter dem Installer.
 ubu_apt() {
   command sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a \
-    apt-get -o DPkg::Lock::Timeout=900 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold "$@"
+    apt-get -o DPkg::Lock::Timeout=900 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+    "${UBU_APT_PIN[@]}" "$@"
 }
+UBU_APT_PIN=()
 
 ubu_install() {
   local debs=() steps=() p m
@@ -109,7 +111,7 @@ ubu_install() {
     else rest+=("$d"); fi
   done
   debs=("${rest[@]}")
-  if [ "${#debs[@]}" -gt 0 ]; then ubu_apt install -y "${debs[@]}" || rc=1; fi
+  if [ "${#debs[@]}" -gt 0 ]; then ubu_apt install -y --no-upgrade "${debs[@]}" || rc=1; fi
   if [ "${#steps[@]}" -gt 0 ]; then ubu_build "${steps[@]}" || rc=1; fi
   return $rc
 }
@@ -230,22 +232,30 @@ ubu_prepare() {
       | command sudo tee "/etc/apt/sources.list.d/cppiber-ubuntu-hyprland-$codename.sources" >/dev/null
     ok "PPA eingetragen ($codename)"
   else ok "Hyprland-PPA vorhanden"; fi
-  ubu_apt -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3 update -qq || true
+  local upd; upd="$(mktemp)"
+  ubu_apt -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3 update 2>&1 | tee "$upd" | grep -E '^(E|W):' || true
   local hv; hv="$(dpkg-query -W -f '${Version}' hyprland 2>/dev/null || true)"
-  # kein grep -q: bricht früh ab → SIGPIPE für apt-cache → mit pipefail fälschlich „nicht gefunden“
-  if apt-cache policy hyprland 2>/dev/null | grep 'ppa.launchpadcontent.net/cppiber' >/dev/null; then
+  # PPA erreichbar? Am Ergebnis von apt update messen – apt-cache zeigt das PPA auch aus alten Listen an.
+  # (kein grep -q in Pipes: bricht früh ab → SIGPIPE → mit pipefail fälschlich „nicht gefunden“)
+  if ! grep 'ppa.launchpadcontent.net/cppiber' "$upd" | grep -E 'Fail|Err|error' >/dev/null \
+     && apt-cache policy hyprland 2>/dev/null | grep 'ppa.launchpadcontent.net/cppiber' >/dev/null; then
     :
   elif [ -n "$hv" ] && dpkg --compare-versions "$hv" ge 0.56; then
-    warn "Hyprland-PPA gerade nicht erreichbar |::| nutze installiertes Hyprland $hv"
+    warn "Hyprland-PPA gerade nicht erreichbar |::| nutze installiertes Hyprland $hv, fehlende Pakete aus dem Ubuntu-Archiv"
+    # nur für die apt-Aufrufe dieses Installers: PPA nachrangig, damit apt das Ubuntu-Archiv nimmt
+    local pin; pin="$(mktemp)"; chmod 644 "$pin"
+    printf 'Package: *\nPin: origin ppa.launchpadcontent.net\nPin-Priority: 1\n' > "$pin"
+    UBU_APT_PIN=(-o "Dir::Etc::Preferences=$pin")
   else
     fatal "Das Hyprland-PPA ist gerade nicht erreichbar (ppa.launchpadcontent.net)." \
       "Ohne PPA gibt es kein aktuelles Hyprland (≥ 0.56) für Ubuntu." \
       "Prüfen:  curl -I https://ppa.launchpadcontent.net/cppiber/hyprland/ubuntu/" \
       "Später einfach erneut starten – bereits erledigte Schritte werden übersprungen."
   fi
+  rm -f "$upd"
   step "Build- und Laufzeitpakete (ubuntu/packages.txt)"
   # shellcheck disable=SC2046
-  ubu_apt install -y $(grep -v '^#' "$UBU_DIR/packages.txt") \
+  ubu_apt install -y --no-upgrade $(grep -v '^#' "$UBU_DIR/packages.txt") \
     || fatal "apt-get install fehlgeschlagen" "Log oben lesen, dann ./install.sh erneut starten"
   ok "Ubuntu-Pakete installiert"
   ubu_build astal astal-gjs ags quickshell mpvpaper awww nerdfonts || fatal "Quellcode-Build fehlgeschlagen" \
