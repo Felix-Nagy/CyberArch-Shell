@@ -266,6 +266,11 @@ ubu_prepare() {
   ubu_build astal astal-gjs ags quickshell mpvpaper awww nerdfonts || fatal "Quellcode-Build fehlgeschlagen" \
     "Log: ${CYBER_SRC:-$HOME/.cache/cyberarch-build}/build.log"
   ok "AGS/Astal/Quickshell/mpvpaper/awww bereit"
+  # launch-theme startet ~/.local/bin/ags. Der Installer verlinkt sonst das erste `ags` im PATH – bei
+  # manchen Dotfiles ein altes AGS v1 in /usr/local/bin („Unable to find AGS entry script“) → HUD startet nicht.
+  if [ -x /usr/bin/ags ]; then
+    mkdir -p "$HOME/.local/bin" && ln -sfn /usr/bin/ags "$HOME/.local/bin/ags" && ok "~/.local/bin/ags → /usr/bin/ags (AGS 3)"
+  fi
   # KDE-Apps (Dolphin = SUPER+E) bekommen ein dunkles Farbschema passend zu Kvantum "Daemon"
   bash "$UBU_DIR/kde-colors.sh" && ok "KDE-Farbschema CyberArchDaemon gesetzt"
   # PAM: Ubuntu hat kein system-auth -> qs-lock vorab mit common-* anlegen
