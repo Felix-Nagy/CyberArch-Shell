@@ -11,7 +11,7 @@ case "$1" in
     while read -r deb; do
       case "$deb" in *.deb) ;; *) continue ;; esac
       name="$(basename "$deb" | cut -d_ -f1)"
-      dpkg-query -W -f '${Status}' "$name" 2>/dev/null | grep -q 'install ok installed' || echo "$name" >>"$STATE"
+      dpkg-query -W -f '${Status}' "$name" 2>/dev/null | grep 'install ok installed' >/dev/null || echo "$name" >>"$STATE"
     done
     ;;
   post)

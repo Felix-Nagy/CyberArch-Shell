@@ -57,7 +57,7 @@ ubu_has() {
   [ -z "$m" ] && return 0
   if [[ "$m" == @* ]]; then ubu_built "${m#@}"; return; fi
   for d in $m; do
-    dpkg-query -W -f '${Status}' "$d" 2>/dev/null | grep -q 'install ok installed' || return 1
+    dpkg-query -W -f '${Status}' "$d" 2>/dev/null | grep 'install ok installed' >/dev/null || return 1
   done
 }
 
@@ -231,7 +231,13 @@ ubu_prepare() {
     ok "PPA eingetragen ($codename)"
   else ok "Hyprland-PPA vorhanden"; fi
   ubu_apt -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3 update -qq || true
-  if ! apt-cache policy hyprland 2>/dev/null | grep -q 'ppa.launchpadcontent.net/cppiber'; then
+  local hv; hv="$(dpkg-query -W -f '${Version}' hyprland 2>/dev/null || true)"
+  # kein grep -q: bricht früh ab → SIGPIPE für apt-cache → mit pipefail fälschlich „nicht gefunden“
+  if apt-cache policy hyprland 2>/dev/null | grep 'ppa.launchpadcontent.net/cppiber' >/dev/null; then
+    :
+  elif [ -n "$hv" ] && dpkg --compare-versions "$hv" ge 0.56; then
+    warn "Hyprland-PPA gerade nicht erreichbar |::| nutze installiertes Hyprland $hv"
+  else
     fatal "Das Hyprland-PPA ist gerade nicht erreichbar (ppa.launchpadcontent.net)." \
       "Ohne PPA gibt es kein aktuelles Hyprland (≥ 0.56) für Ubuntu." \
       "Prüfen:  curl -I https://ppa.launchpadcontent.net/cppiber/hyprland/ubuntu/" \
