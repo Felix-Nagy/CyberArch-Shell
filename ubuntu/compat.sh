@@ -10,6 +10,11 @@
 
 UBU_DIR="$THEME/ubuntu"
 export DEBIAN_FRONTEND=noninteractive
+# Rio (sugarloaf) nimmt sonst das erste `glslc` im PATH – auf manchen Systemen ein inkompatibles
+# (versteht `-fhlsl_functionality1` nicht). glslangValidator aus glslang-tools funktioniert; Env hat Vorrang.
+if [ -z "${GLSLC:-}" ] && command -v glslangValidator >/dev/null 2>&1; then
+  export GLSLANG_VALIDATOR="$(command -v glslangValidator)"
+fi
 
 # ── Paket-Mapping Arch → Ubuntu ─────────────────────────────────────────────
 #   ""        -> auf Ubuntu nicht nötig (lib32, Teil eines anderen Pakets …)
