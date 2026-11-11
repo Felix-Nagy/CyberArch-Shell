@@ -319,6 +319,18 @@ ubu_finish() {
     echo /usr/bin/sddm | command sudo tee /etc/X11/default-display-manager >/dev/null
     command sudo systemctl reset-failed sddm 2>/dev/null || true
     ok "SDDM startet beim nächsten Boot (default-display-manager → sddm)"
+    # /etc/sddm.conf wird NACH allen sddm.conf.d-Drop-ins gelesen und gewinnt immer. Andere Dotfiles
+    # (z. B. KoolDots: Current=simple_sddm_2, InputMethod=qtvirtualkeyboard) überstimmen sonst netwatch.
+    if [ -f /etc/sddm.conf ] && grep -E '^[[:space:]]*(Current|InputMethod|GreeterEnvironment)[[:space:]]*=' /etc/sddm.conf >/dev/null; then
+      local bak; bak="/etc/sddm.conf.vor-cyberarch.$(date +%s)"
+      command sudo cp -p /etc/sddm.conf "$bak"
+      command sudo sed -i -E \
+        -e 's/^[[:space:]]*Current[[:space:]]*=.*/Current=netwatch/' \
+        -e 's/^[[:space:]]*InputMethod[[:space:]]*=.*/InputMethod=/' \
+        -e 's/^[[:space:]]*GreeterEnvironment[[:space:]]*=.*/GreeterEnvironment=QML_XHR_ALLOW_FILE_READ=1/' \
+        /etc/sddm.conf
+      ok "/etc/sddm.conf auf netwatch umgestellt (vorher: $bak)"
+    fi
   fi
   if [ -d /var/lib/sddm ] && [ -f /usr/share/wayland-sessions/hyprland.desktop ]; then
     # beim ersten Login Hyprland + diesen Benutzer vorauswählen (sonst ggf. GNOME)
