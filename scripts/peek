@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# peek at the desktop (SUPER+D).
+# peek at the desktop (SUPER+SHIFT+D).
 set -euo pipefail
 STATE="${XDG_RUNTIME_DIR:-/tmp}/hypr-peek-state"
 SPECIAL="special:peek"
