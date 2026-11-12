@@ -133,10 +133,11 @@ hl.exec_cmd("mkdir -p " .. os.getenv("HOME") .. "/.config/kitty && ln -sfn " .. 
 hl.exec_cmd("mkdir -p " .. os.getenv("HOME") .. "/.local/share/icons && ln -sfn " .. cyberpunk .. "/assets/gtk/iconpack " .. os.getenv("HOME") .. "/.local/share/icons/iconpack")
 hl.exec_cmd("gsettings set org.gnome.desktop.interface icon-theme 'iconpack'")
 hl.exec_cmd("ln -sfn " .. cyberpunk .. "/assets/cursor " .. os.getenv("HOME") .. "/.local/share/icons/neurodance")
+hl.exec_cmd("mkdir -p " .. os.getenv("HOME") .. "/.icons && ln -sfn " .. cyberpunk .. "/assets/cursor " .. os.getenv("HOME") .. "/.icons/neurodance") -- Hyprland 0.57 on Ubuntu only finds the theme here
 hl.exec_cmd("gsettings set org.gnome.desktop.interface cursor-theme 'neurodance'")
-hl.exec_cmd("hyprctl setcursor neurodance 48")
+hl.exec_cmd("hyprctl setcursor neurodance 32")
 hl.env("XCURSOR_THEME", "neurodance")
-hl.env("XCURSOR_SIZE", "48")
+hl.env("XCURSOR_SIZE", "32")
 hl.env("QT_STYLE_OVERRIDE", "kvantum")
 once("bash " .. cyberpunk .. "/scripts/apply_theme")
 
