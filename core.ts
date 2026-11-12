@@ -35,6 +35,7 @@ import { LauncherWindow } from "./components/modules/launcher.ts"
 import { AppsMenuWindow, openAppsMenu } from "./components/modules/appsmenu.ts"
 import { PlayerWindow, togglePlayer } from "./components/modules/player.ts"
 import { NowPlayingWindow } from "./components/modules/nowplaying.ts"
+import { WsBarWindows, refreshWsBar } from "./components/modules/wsbar.ts"
 import { hudLayout, onHudLayout, placeHudWindow } from './components/modules/hud-layout.ts'
 import { createSurfaces } from './components/modules/hud-layout-policy.js'
 
@@ -265,6 +266,7 @@ const wireSocket = () => {
   if (ev === "workspace") setWorkspaceBadge(data.trim())
   else if (ev === "workspacev2") setWorkspaceBadge(data.split(",")[1]?.trim() || data.split(",")[0]?.trim())
   else if (ev === "focusedmon") setWorkspaceBadge(data.split(",")[1]?.trim())
+  if (/^(workspace|createworkspace|destroyworkspace|moveworkspace|focusedmon|openwindow|closewindow|movewindow)/.test(ev)) refreshWsBar()
   if (ev.startsWith("monitoradded") || ev.startsWith("monitorremoved")) { scheduleMonitorSync(); pickRefresh() }
   if (EVENT_HITS.has(ev)) pickRefresh()
   pump()
@@ -419,6 +421,7 @@ App.start({
  CModalWindows()
  AppsMenuWindow()
  PlayerWindow()
+ WsBarWindows()
  registerHudWindows(hudWins)
  execAsync(["sh", "-c", `'${CYBER_DIR}/scripts/appvol-keeper'`]).catch(() => {})
  for (const w of hudWins) wireHudWindow(w)

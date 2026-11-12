@@ -1192,6 +1192,10 @@ end)
 
 hl.bind("SUPER + E", hl.dsp.exec_cmd("dolphin"))
 hl.bind("SUPER + Return", hl.dsp.exec_cmd("kitty"))
+-- SUPER + SHIFT + 1…0: aktuelles Fenster auf Workspace 1…10 schieben (zusätzlich zu ALT + SHIFT + Zahl)
+for i = 1, 10 do
+    hl.bind("SUPER + SHIFT + " .. (i % 10), app("scripts/ws move " .. i))
+end
 
 USEREOF
     ok "created user.lua template at $USERLUA"
