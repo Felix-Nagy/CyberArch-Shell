@@ -2,6 +2,13 @@
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Only one lock shell at a time. Hyprland grants a single session lock; a second quickshell
+# (e.g. two hypridle daemons both running lock_cmd) never gets it and stays resident forever.
+# The fd is inherited by quickshell (exec below), so the lock is held until it exits.
+LOCKFILE="${XDG_RUNTIME_DIR:-/tmp}/cyberarch-lockscreen.lock"
+exec 9>"$LOCKFILE"
+command -v flock >/dev/null 2>&1 && ! flock -n 9 && exit 0
+
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-$(loginctl show-session $(loginctl | grep $(whoami) | awk '{print $1}') -p Type --value 2>/dev/null || echo wayland)}"
 export QT_MEDIA_BACKEND=ffmpeg
 QS_USER_THEME=""

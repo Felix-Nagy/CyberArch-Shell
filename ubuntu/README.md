@@ -89,6 +89,7 @@ Eigene Ergänzungen gehören in `~/.config/hypr/user.lua` – die Datei bleibt b
 | `grep -q` in Pipes mit `pipefail` → falsche „nicht gefunden“ | überall `grep … >/dev/null` |
 | Codeberg/GitHub kurz nicht erreichbar | Klonen/Downloads mit Wiederholungen |
 | apt nach dem ersten Boot blockiert (unattended-upgrades) | apt wartet bis 15 min auf die Sperre |
+| Ubuntu aktiviert `hypridle.service` global, das Theme startet hypridle zusätzlich → zwei Lockscreens pro Sperre, einer bleibt mit ~270 MB hängen | `hypridle.service` und `hyprpaper.service` für den Benutzer maskiert; `lock.sh` startet per `flock` nur einen Lockscreen |
 
 ## Grenzen
 

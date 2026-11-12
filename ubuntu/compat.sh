@@ -376,8 +376,30 @@ ubu_finish() {
     ok "SDDM wählt Hyprland + $(id -un) vor"
   fi
   ubu_greeter_reaper
+  ubu_user_units
   ubu_takeover
   ubu_start_hud
+}
+
+# Ubuntu-Pakete aktivieren hypridle.service und hyprpaper.service global (graphical-session.target).
+# theme.lua startet hypridle aber selbst ("pgrep hypridle || hypridle"); beide starten gleichzeitig,
+# der pgrep-Schutz verliert das Rennen → zwei hypridle → beim Sperren zwei Lockscreens, der zweite
+# bekommt die Sperre nie und bleibt mit ~270 MB im Speicher. Wallpaper kommt von awww/mpvpaper,
+# hyprpaper läuft nur doppelt mit. Beide Dienste für diesen Benutzer maskieren (umkehrbar: unmask).
+ubu_user_units() {
+  local u
+  for u in hypridle hyprpaper; do
+    [ -e "/usr/lib/systemd/user/$u.service" ] || continue
+    [ "$(systemctl --user is-enabled "$u.service" 2>/dev/null)" = masked ] && continue
+    systemctl --user stop "$u.service" >/dev/null 2>&1 || true
+    systemctl --user mask "$u.service" >/dev/null 2>&1 \
+      && ok "Benutzerdienst $u maskiert (Theme startet hypridle selbst, Wallpaper über awww)" \
+      || warn "$u.service ließ sich nicht maskieren |::| systemctl --user mask $u.service"
+  done
+  # Installer in laufender Sitzung: nach dem Stoppen des Dienstes hypridle wie theme.lua neu starten
+  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hypridle >/dev/null && ! pgrep -x hypridle >/dev/null; then
+    setsid -f hypridle >/dev/null 2>&1 || true
+  fi
 }
 
 # ── Übernahme einer vorhandenen Hyprland-Config (KoolDots, HyDE, ML4W …) ──────
