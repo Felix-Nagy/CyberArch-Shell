@@ -312,6 +312,42 @@ if [ "${CYBERARCH_YES:-0}" = 1 ]; then
 fi
 
 # ── Nacharbeiten am Ende von install.sh ─────────────────────────────────────
+# Der netwatch-Greeter (Qt + Video) bleibt nach dem Login oft hängen ("Greeter stopping" → "Process crashed")
+# und hält dann ~1,5 GB RAM. Kleiner Systemdienst: sobald auf seat0 eine Benutzersitzung läuft, wird ein
+# übrig gebliebener Greeter beendet. Am Login-Bildschirm (keine Sitzung) tut er nichts.
+ubu_greeter_reaper() {
+  command -v systemctl >/dev/null 2>&1 || return 0
+  [ -d /var/lib/sddm ] || return 0
+  command sudo install -d /usr/local/libexec
+  command sudo tee /usr/local/libexec/cyberarch-greeter-reaper >/dev/null <<'EOF2'
+#!/bin/sh
+# beendet einen hängengebliebenen SDDM-Greeter, sobald auf seat0 eine Benutzersitzung läuft
+while sleep 20; do
+  pgrep -u sddm -x sddm-greeter-qt6 >/dev/null || continue
+  loginctl list-sessions --no-legend | awk '$4=="seat0" && $6=="user" {f=1} END{exit !f}' || continue
+  sleep 10   # dem Greeter Zeit für ein sauberes Ende geben
+  pkill -TERM -u sddm -x sddm-greeter-qt6; sleep 3
+  pkill -KILL -u sddm -x sddm-greeter-qt6
+done
+EOF2
+  command sudo chmod 755 /usr/local/libexec/cyberarch-greeter-reaper
+  command sudo tee /etc/systemd/system/cyberarch-greeter-reaper.service >/dev/null <<'EOF2'
+[Unit]
+Description=CyberArch: hängengebliebenen SDDM-Greeter nach dem Login beenden
+After=sddm.service
+
+[Service]
+ExecStart=/usr/local/libexec/cyberarch-greeter-reaper
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
+EOF2
+  command sudo systemctl daemon-reload
+  command sudo systemctl enable --now cyberarch-greeter-reaper.service >/dev/null 2>&1 || true
+  ok "Greeter-Aufräumdienst aktiv (spart ~1,5 GB RAM nach dem Login)"
+}
+
 ubu_finish() {
   hdr "UBUNTU · Abschluss"
   if [ "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" = "$(readlink -f /usr/lib/systemd/system/sddm.service 2>/dev/null)" ]; then
@@ -339,6 +375,7 @@ ubu_finish() {
     command sudo chown sddm:sddm /var/lib/sddm/state.conf 2>/dev/null || true
     ok "SDDM wählt Hyprland + $(id -un) vor"
   fi
+  ubu_greeter_reaper
   ubu_takeover
   ubu_start_hud
 }
