@@ -98,11 +98,23 @@ Eigene Ergänzungen gehören in `~/.config/hypr/user.lua` – die Datei bleibt b
 
 ## Aktualisieren
 
+Updates kommen **nur aus diesem Fork** (`origin` = Felix-Nagy/CyberArch-Shell), nie direkt vom Original.
+
+- Das HUD prüft beim Start die neueste **GitHub-Release** dieses Forks. Ist sie neuer als `VERSION`, erscheint das
+  Banner „NEW VERSION … AVAILABLE“; **SUPER+SHIFT+Q** zeigt den Changelog, **UPDATE NOW** führt `updater.sh` aus.
+- Von Hand: `cd ~/CyberArch-Shell && ./updater.sh` (spult auf das neueste Release bzw. `master` vor, lokale
+  Änderungen werden vorher gestasht).
+
+Versionsschema: `<Version des Originals>.<Ubuntu-Release>`, z. B. `2.3.26.1`.
+
+**Neue Version veröffentlichen** (nach Commits auf `master`):
+
 ```bash
-cd ~/CyberArch-Shell && git pull && ./install.sh
+cd ~/CyberArch-Shell && ubuntu/release.sh          # 2.3.26.1 -> 2.3.26.2, Changelog aus den Commits
 ```
 
-Neue Versionen des Originals kommen über „Sync fork“ auf GitHub in diesen Fork.
+Ohne Release meldet das HUD keine Updates. Neues vom Original übernehmen: auf GitHub „Sync fork“ (Konflikte in
+`install.sh` prüfen), danach `ubuntu/release.sh <neue-upstream-version>.1`.
 
 ## Einzelne Builds wiederholen
 
