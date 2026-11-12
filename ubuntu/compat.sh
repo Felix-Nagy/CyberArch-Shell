@@ -348,6 +348,25 @@ EOF2
   ok "Greeter-Aufräumdienst aktiv (spart ~1,5 GB RAM nach dem Login)"
 }
 
+# ── WallpaperDaemon.sh: Theme-Wallpaper gewinnt gegen eine ältere SUPER+W-Auswahl ─────────────
+# Upstream liest bei jedem Resume (hypridle/LidSwitch) zuerst die KoolDots-Dateien (SUPER+W). Das
+# Theme speichert seine Wahl in ~/.config/cyberarch/wallpaper.lua. Ohne Fix überschreibt eine alte
+# SUPER+W-Auswahl das Theme-Wallpaper nach jedem Schlafen. ubuntu/WallpaperDaemon.sh entscheidet
+# anhand der Änderungszeit, welche Quelle neuer ist. Das Original wird einmal als *.orig-cyberarch gesichert.
+ubu_wallpaper_daemon() {
+  local src="$UBU_DIR/WallpaperDaemon.sh" dst="$HOME/.config/hypr/scripts/WallpaperDaemon.sh"
+  [ -f "$src" ] || return 0
+  mkdir -p "$(dirname "$dst")"
+  if [ -f "$dst" ] && ! cmp -s "$src" "$dst" && [ ! -f "$dst.orig-cyberarch" ]; then
+    cp -p "$dst" "$dst.orig-cyberarch"
+  fi
+  if install -m 755 "$src" "$dst"; then
+    ok "WallpaperDaemon.sh: Theme-Wallpaper hat Vorrang vor älterer SUPER+W-Auswahl"
+  else
+    warn "WallpaperDaemon.sh konnte nicht installiert werden |::| Wallpaper springt nach Schlafen evtl. zurück"
+  fi
+}
+
 ubu_finish() {
   hdr "UBUNTU · Abschluss"
   if [ "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" = "$(readlink -f /usr/lib/systemd/system/sddm.service 2>/dev/null)" ]; then
@@ -376,6 +395,7 @@ ubu_finish() {
     ok "SDDM wählt Hyprland + $(id -un) vor"
   fi
   ubu_greeter_reaper
+  ubu_wallpaper_daemon
   ubu_user_units
   ubu_takeover
   ubu_start_hud
