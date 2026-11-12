@@ -210,8 +210,7 @@ Keybinds are bound by key name, so they only fire under the right keyboard layou
 
 | Keybind | Action |
 | --- | --- |
-| `SUPER` / `SUPER + Space` | App launcher |
-| `SUPER + D` | App launcher |
+| `SUPER` (allein drücken) / `SUPER + D` | App launcher |
 | `SUPER + TAB` | Next workspace |
 | `SUPER + SHIFT + Z` | Toggle HUD above / below windows |
 | `SUPER + SHIFT + V` | Volume & Microphone modal |
@@ -237,8 +236,9 @@ Keybinds are bound by key name, so they only fire under the right keyboard layou
 
 | Keybind | Action |
 | --- | --- |
-| `SUPER + SHIFT + T` | Default terminal (Rio) |
+| `SUPER + T` | Rio terminal |
 | `SUPER + SHIFT + T` | Netrunner terminal (cool-retro-term) |
+| `SUPER + E` | File manager (thunar) |
 | `SUPER + SHIFT + S` | Screenshot (region) |
 | `SUPER + SHIFT + R` | Start / stop screen recording |
 | `SUPER + SHIFT + K` | **Kill mode** (click a window to kill · `ESC` exits) |
@@ -255,6 +255,7 @@ Keybinds are bound by key name, so they only fire under the right keyboard layou
 | `SUPER + SHIFT + ← → ↑ ↓` | Move window |
 | `CTRL + SHIFT + ← → ↑ ↓` | Resize window |
 | `SUPER + 1…0` | Switch workspace (with the glitch transition) |
+| `SUPER + SHIFT + 1…0` | Send active window to workspace 1…10 |
 | `ALT + SHIFT + 1/2/3/4/5...` | Send window to workspace |
 | 3-finger swipe (If using notebook)  ← / → | Previous / next workspace |
 

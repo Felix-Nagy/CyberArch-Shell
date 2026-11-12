@@ -34,11 +34,14 @@ Wer das Repo schon geklont hat: auf Ubuntu genügt `./install.sh` – er erkennt
 
 `install.sh` ist der originale Installer. Auf Ubuntu lädt er `ubuntu/compat.sh`, das
 
-- `ppa:cppiber/hyprland` hinzufügt und `ubuntu/packages.txt` per apt installiert,
+- `ppa:cppiber/hyprland` hinzufügt und `ubuntu/packages.txt` per apt installiert (der PPA-Schlüssel liegt bei, kein `add-apt-repository`),
 - aus dem Quellcode baut, was Ubuntu nicht hat (`ubuntu/build-deps.sh`): Astal, AGS 3.1.2, Quickshell, mpvpaper,
   awww, Nerd Fonts – Log: `~/.cache/cyberarch-build/build.log`,
 - alle `pacman`-/AUR-Aufrufe des Installers auf apt bzw. diese Builds umleitet (Paket-Mapping Arch → Ubuntu),
-- am Ende SDDM startfähig macht und Hyprland + Benutzer im Login vorauswählt.
+- am Ende SDDM startfähig macht und Hyprland + Benutzer im Login vorauswählt,
+- maskiert die Benutzerdienste `hypridle` und `hyprpaper`, die Ubuntu global aktiviert (das Theme startet beides selbst),
+- richtet einen kleinen Systemdienst `cyberarch-greeter-reaper` ein, der einen nach dem Login hängengebliebenen
+  SDDM-Greeter beendet (spart ~1,5 GB RAM).
 
 | Arch | Ubuntu |
 | --- | --- |
@@ -90,7 +93,7 @@ Eigene Ergänzungen gehören in `~/.config/hypr/user.lua` – die Datei bleibt b
 | Codeberg/GitHub kurz nicht erreichbar | Klonen/Downloads mit Wiederholungen |
 | apt nach dem ersten Boot blockiert (unattended-upgrades) | apt wartet bis 15 min auf die Sperre |
 | Ubuntu aktiviert `hypridle.service` global, das Theme startet hypridle zusätzlich → zwei Lockscreens pro Sperre, einer bleibt mit ~270 MB hängen | `hypridle.service` und `hyprpaper.service` für den Benutzer maskiert; `lock.sh` startet per `flock` nur einen Lockscreen |
-
+| netwatch-Greeter bleibt nach dem Login hängen („Greeter stopping“) und belegt ~1,5 GB RAM | Aufräumdienst `cyberarch-greeter-reaper` beendet ihn, sobald eine Benutzersitzung läuft |
 ## Grenzen
 
 - **CyberSpace-Client** braucht WPE WebKit, das es für Ubuntu nicht gibt (wird im Automatikmodus übersprungen).
