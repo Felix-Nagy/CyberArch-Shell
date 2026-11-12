@@ -211,7 +211,8 @@ Keybinds are bound by key name, so they only fire under the right keyboard layou
 | Keybind | Action |
 | --- | --- |
 | `SUPER` / `SUPER + Space` | App launcher |
-| `SUPER + TAB` | App launcher |
+| `SUPER + D` | App launcher |
+| `SUPER + TAB` | Next workspace |
 | `SUPER + SHIFT + Z` | Toggle HUD above / below windows |
 | `SUPER + SHIFT + V` | Volume & Microphone modal |
 | `SUPER + SHIFT + I` | Brightness modal |
@@ -242,7 +243,7 @@ Keybinds are bound by key name, so they only fire under the right keyboard layou
 | `SUPER + SHIFT + R` | Start / stop screen recording |
 | `SUPER + SHIFT + K` | **Kill mode** (click a window to kill · `ESC` exits) |
 | `SUPER + SHIFT + L` | Lock screen |
-| `SUPER + D` | Peek desktop (hide windows) |
+| `SUPER + SHIFT + D` | Peek desktop (hide windows) |
 
 ### Window management
 

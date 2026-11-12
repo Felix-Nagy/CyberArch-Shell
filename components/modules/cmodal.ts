@@ -1661,7 +1661,7 @@ fi`).then(() => timeout(200, fetchInitApps))
     return ctrl
 }
 const KEYBINDS = [
-    ["SUPER + TAB", "cfg.keyhelp.app_launcher"], ["H", "cfg.keyhelp.help_menu"], ["Z", "cfg.keyhelp.hud_overlay"], ["V", "cfg.keyhelp.volume"],
+    ["SUPER + D", "cfg.keyhelp.app_launcher"],["H", "cfg.keyhelp.help_menu"], ["Z", "cfg.keyhelp.hud_overlay"], ["V", "cfg.keyhelp.volume"],
     ["I", "cfg.keyhelp.brightness"], ["U", "cfg.keyhelp.system_upgrade"], ["J", "cfg.keyhelp.dismiss_update"], ["Q", "cfg.keyhelp.cyberarch_update"], ["M", "cfg.keyhelp.microphone"], ["G", "cfg.keyhelp.markets"], ["O", "cfg.keyhelp.music_player"], ["N", "cfg.keyhelp.networks"],
     ["B", "cfg.keyhelp.bluetooth"], ["W", "cfg.keyhelp.forecast"], ["P", "cfg.keyhelp.power_menu"], ["Y", "cfg.keyhelp.battery"],
     ["C", "cfg.keyhelp.cpu_ram"], ["L", "cfg.keyhelp.lockscreen"], ["R", "cfg.keyhelp.screen_record"], ["S", "cfg.keyhelp.screenshot"],
@@ -1690,7 +1690,7 @@ const HYPRBINDS = [
     ["SUPER + SHIFT + ← → ↑ ↓", "cfg.keyhelp.move_window"],
     ["CTRL + SHIFT + ← → ↑ ↓", "cfg.keyhelp.resize_window"],
     ["ALT + SHIFT + 1…0", "cfg.keyhelp.window_workspace"],
-    ["SUPER + D", "cfg.keyhelp.peek_desktop"],
+    ["SUPER + SHIFT + D", "cfg.keyhelp.peek_desktop"],
 ]
 const readThemeMod = () => {
     try {

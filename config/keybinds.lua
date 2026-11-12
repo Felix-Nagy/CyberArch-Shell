@@ -206,12 +206,13 @@ local function applyDefaults(mod)
     end
 end
 
-CD.bind("SUPER + TAB", app("scripts/launcher"), "APP LAUNCHER")
+CD.bind("SUPER + TAB", hl.dsp.focus({ workspace = "m+1" }), "NEXT WORKSPACE")
 CD.bind("SUPER + T", hl.dsp.exec_cmd("rio"), "RIO TERMINAL")
 CD.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd("cool-retro-term"), "RETRO TERMINAL")
 CD.bind("SUPER + ALT + D", hl.dsp.exec_cmd("discord"), "DISCORD")
 CD.bind("SUPER + E", hl.dsp.exec_cmd("thunar"), "FILES")
-CD.bind("SUPER + D", app("scripts/peek"), "PEEK")
+CD.bind("SUPER + D", app("scripts/launcher"), "APP LAUNCHER")
+CD.bind("SUPER + SHIFT + D", app("scripts/peek"), "PEEK")
 CD.bind("CTRL + SHIFT + ALT + r", app("scripts/restart"), "RESTART THEME")
 CD.bind("SUPER + CTRL + Delete", hl.dsp.exec_cmd("hyprctl reload"), "RELOAD HYPRLAND")
 CD.bind("SUPER + mouse:272", hl.dsp.window.drag(), "DRAG WINDOW", { mouse = true })
