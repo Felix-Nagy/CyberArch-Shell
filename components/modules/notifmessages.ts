@@ -292,7 +292,7 @@ const focusApp = (appRaw: string, desktopEntry: string) => {
                 if (s > bs) { bs = s; best = c }
             }
         }
-        if (best && best.address) execAsync(["sh", "-c", `hyprctl dispatch focuswindow address:${best.address}`]).catch(() => { })
+        if (best && best.address) execAsync(["hyprctl", "dispatch", `hl.dsp.focus({ window = "address:${best.address}" })`]).catch(() => { })
     }).catch(() => { })
 }
 
