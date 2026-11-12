@@ -21,7 +21,7 @@ fi
 export QS_THEME_PATH="$DIR/themes/$QS_THEME"
 export QS_PAM_CONFIG="qs-lock"
 export XCURSOR_THEME="neurodance"
-export XCURSOR_SIZE=48
+export XCURSOR_SIZE=32
 
 ### fix for lock 
 if [ -z "${WAYLAND_DISPLAY:-}" ] && command -v wlr-randr >/dev/null 2>&1; then
