@@ -22,6 +22,7 @@ Hyprland mit dem HUD startet. Protokoll: `~/cyberarch-install-<datum>.log`.
 | `--no-fish` | Standard-Shell bleibt bash |
 | `--no-upgrade` | kein `apt full-upgrade` vorab |
 | `--keep-greeter` | GDM o. ä. behalten (dann kein netwatch-Login / Theme-Lockscreen) |
+| `--keep-config` | vorhandene Hyprland-Config (KoolDots, HyDE, ML4W …) nicht ersetzen, Theme nur anhängen |
 | `--dir PFAD` / `--branch NAME` | anderer Zielordner / Branch |
 
 Optionen hinter den Befehl hängen, z. B. `bash <(curl -fsSL …/setup.sh) --no-fish`.
@@ -52,10 +53,42 @@ Wer das Repo schon geklont hat: auf Ubuntu genügt `./install.sh` – er erkennt
 Zusätzlich in diesem Fork:
 
 - **SUPER + Enter** öffnet kitty (im `user.lua`-Template)
+- **SUPER + SHIFT + 1…0** schiebt das aktive Fenster auf Workspace 1…10 (zusätzlich zu ALT + SHIFT + Zahl)
+- **Workspace-Leiste** oben mittig im HUD-Stil (aktiv leuchtet in der Palettenfarbe, belegt rot, Klick wechselt)
 - kein rotes Aufblitzen in kitty bei jedem Enter (fish-Prompt „dangerous“ klingelte bei jedem Prompt)
 - SDDM-Video-Hintergrund bleibt unter Qt 6.10 nicht mehr schwarz (`components/login/sddm-theme/Background.qml`)
 - Hyprlands autogenerierte `hyprland.lua` wird ersetzt statt erweitert (sonst bleibt deren Warnbanner)
 - keine falsche „Rio ohne Shader“-Warnung
+
+## Vorhandene Hyprland-Config (Dotfiles)
+
+Lädt `~/.config/hypr/hyprland.lua` schon eine andere Konfiguration, würden deren Leisten und Dienste (Waybar,
+swaync …) neben dem HUD weiterlaufen. Der Installer übernimmt deshalb (außer mit `--keep-config`):
+
+- sichert die alte Datei als `hyprland.lua.vor-cyberarch.<zeit>`; danach lädt `hyprland.lua` nur noch das Theme,
+- übernimmt Tastaturlayout und Monitore nach `~/.config/hypr/cyberarch-host.lua`,
+- beendet Waybar, swaync, dunst, mako, hyprpaper und maskiert deren Benutzerdienste (sonst übernimmt z. B. swaync die
+  Benachrichtigungen),
+- maskiert nichts systemweit; ein vorhandenes `/etc/sddm.conf` wird gesichert (`/etc/sddm.conf.vor-cyberarch.*`) und auf
+  netwatch umgestellt, weil diese Datei alle Drop-ins überstimmt,
+- startet das HUD sofort, wenn der Installer in einer laufenden Hyprland-Sitzung läuft.
+
+Den Rückweg schreibt er nach `~/.config/cyberarch/takeover-<zeit>.txt` (Datei zurückkopieren, Dienste `unmask`).
+Eigene Ergänzungen gehören in `~/.config/hypr/user.lua` – die Datei bleibt bei Updates unangetastet.
+
+## Bekannte Stolpersteine (alle im Installer abgefangen)
+
+| Problem | Lösung im Installer |
+| --- | --- |
+| Launchpad (PPA) nicht erreichbar, `add-apt-repository` hängt | PPA-Schlüssel liegt bei (`ubuntu/hyprland-ppa.asc`), Quelle wird direkt eingetragen; bei Ausfall weiter mit installiertem Hyprland, fehlende Pakete aus dem Ubuntu-Archiv |
+| sudo-rs reicht `DEBIAN_FRONTEND` nicht durch → unsichtbare debconf-Frage („Default display manager“) | alle apt-Aufrufe mit `sudo env DEBIAN_FRONTEND=noninteractive …`, debconf vorbelegt |
+| SDDM startet nach GDM nicht | `/etc/X11/default-display-manager` wird auf sddm gesetzt |
+| altes `/etc/sddm.conf` aus Dotfiles erzwingt fremdes Login-Theme | wird gesichert und umgestellt |
+| altes AGS v1 in `/usr/local/bin` → HUD startet nicht | `~/.local/bin/ags` zeigt fest auf AGS 3 |
+| `/usr/bin/glslc` ist nur ein Link auf glslangValidator → Rio-Build bricht ab | `GLSLANG_VALIDATOR` wird gesetzt |
+| `grep -q` in Pipes mit `pipefail` → falsche „nicht gefunden“ | überall `grep … >/dev/null` |
+| Codeberg/GitHub kurz nicht erreichbar | Klonen/Downloads mit Wiederholungen |
+| apt nach dem ersten Boot blockiert (unattended-upgrades) | apt wartet bis 15 min auf die Sperre |
 
 ## Grenzen
 

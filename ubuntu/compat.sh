@@ -339,4 +339,88 @@ ubu_finish() {
     command sudo chown sddm:sddm /var/lib/sddm/state.conf 2>/dev/null || true
     ok "SDDM wählt Hyprland + $(id -un) vor"
   fi
+  ubu_takeover
+  ubu_start_hud
+}
+
+# ── Übernahme einer vorhandenen Hyprland-Config (KoolDots, HyDE, ML4W …) ──────
+# install.sh hängt das Theme nur HINTER eine bestehende hyprland.lua. Deren Autostarts (waybar, swaync …)
+# laufen dann weiter, und swaync nimmt dem HUD die Benachrichtigungen weg. Beim Host-Test (KoolDots) musste
+# das von Hand gelöst werden. Hier: Config sichern, nur noch Theme laden, Tastatur + Monitore übernehmen,
+# konkurrierende Leisten/Benachrichtigungsdienste stoppen (nur für diesen Benutzer, umkehrbar).
+#   CYBERARCH_TAKEOVER=y|n   (Standard: y im Automatikmodus, sonst Rückfrage)
+ubu_takeover() {
+  local hd="$HOME/.config/hypr" hl="$HOME/.config/hypr/hyprland.lua"
+  [ -f "$hl" ] || return 0
+  # Zeilen, die nicht zum Theme-Loader gehören (Kommentare/Leerzeilen ignoriert)
+  local foreign
+  foreign="$(grep -vE '^[[:space:]]*(--.*)?$' "$hl" | grep -cvE 'themes/cyberpunk/\?\.lua|^require\("(theme|user|cyberarch-host)"\)[[:space:]]*$' || true)"
+  [ "${foreign:-0}" -gt 0 ] || return 0
+
+  hdr "UBUNTU · vorhandene Hyprland-Config übernehmen"
+  printf "  ${DIM}Deine hyprland.lua lädt noch eine andere Konfiguration (%s Zeilen). Deren Leisten und Dienste\n" "$foreign"
+  printf "  würden neben dem HUD weiterlaufen. Sie wird gesichert, danach lädt hyprland.lua nur noch das Theme.${R}\n"
+  local ans="${CYBERARCH_TAKEOVER:-}"
+  if [ -z "$ans" ]; then
+    if [ "${CYBERARCH_YES:-0}" = 1 ]; then ans=y
+    else printf "[!] Vorhandene Config sichern und durch das Theme ersetzen? (y/N) "; builtin read -r ans </dev/tty || ans=n; fi
+  fi
+  case "$ans" in [yY]*) ;; *) warn "übersprungen |::| Theme bleibt hinter deiner Config angehängt"; return 0 ;; esac
+
+  local ts bak note host
+  ts="$(date +%Y%m%d-%H%M%S)"; bak="$hl.vor-cyberarch.$ts"
+  note="$HOME/.config/cyberarch/takeover-$ts.txt"; host="$hd/cyberarch-host.lua"
+  mkdir -p "$HOME/.config/cyberarch"
+  cp -p "$hl" "$bak" && ok "gesichert → $bak"
+  { echo "CyberArch-Übernahme $ts – rückgängig machen:"; echo "  cp -p '$bak' '$hl'"; } > "$note"
+
+  # Tastatur + Monitore übernehmen: live aus Hyprland, sonst aus der alten Config
+  local live=0 kb="" kv=""
+  [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null && hyprctl version >/dev/null 2>&1 && live=1
+  if [ "$live" = 1 ] && command -v jq >/dev/null; then
+    kb="$(hyprctl getoption input:kb_layout -j 2>/dev/null | jq -r '.str // empty')"
+    kv="$(hyprctl getoption input:kb_variant -j 2>/dev/null | jq -r '.str // empty')"
+  fi
+  if [ -z "$kb" ]; then
+    kb="$(grep -rhoE 'kb_layout[[:space:]]*=[[:space:]]*"[^"]+"' "$hd" --include='*.lua' 2>/dev/null | grep -v themes/ | head -n1 | sed -E 's/.*"([^"]+)".*/\1/' || true)"
+  fi
+  {
+    echo "-- Von der vorherigen Hyprland-Config übernommen ($ts). Sicherung: $bak"
+    [ -n "$kb" ] && [ "$kb" != "[[EMPTY]]" ] && printf 'hl.config({ input = { kb_layout = "%s"%s } })\n' "$kb" \
+      "$( [ -n "$kv" ] && [ "$kv" != "[[EMPTY]]" ] && printf ', kb_variant = "%s"' "$kv")"
+    if [ "$live" = 1 ] && command -v jq >/dev/null; then
+      hyprctl monitors -j 2>/dev/null | jq -r '.[] | "hl.monitor({ output = \"\(.name)\", mode = \"\(.width)x\(.height)@\(.refreshRate * 1000 | round / 1000)\", position = \"\(.x)x\(.y)\", scale = \(.scale) })"'
+    fi
+  } > "$host"
+  ok "Tastatur${kb:+ ($kb)} und Monitore → $host"
+
+  printf '%s\n' "-- CyberArch-Shell (vorherige Config: $bak)" \
+    'package.path = os.getenv("HOME") .. "/.config/hypr/themes/cyberpunk/?.lua;" .. os.getenv("HOME") .. "/.config/hypr/?.lua;" .. (package.path or "")' \
+    'require("theme")' 'require("user")' 'require("cyberarch-host")' > "$hl"
+  ok "hyprland.lua lädt jetzt nur noch das Theme"
+
+  # konkurrierende Leisten/Benachrichtigungsdienste: beenden und als Benutzerdienst maskieren
+  local p u
+  for p in waybar swaync dunst mako hyprpaper ags-v1; do
+    if pgrep -x "$p" >/dev/null 2>&1; then pkill -x "$p" 2>/dev/null && ok "beendet: $p"; fi
+  done
+  for u in swaync dunst mako waybar; do
+    if systemctl --user is-enabled "$u.service" 2>/dev/null | grep -E '^(enabled|static|alias)' >/dev/null; then
+      systemctl --user mask "$u.service" >/dev/null 2>&1 && ok "Benutzerdienst $u maskiert (HUD übernimmt)" \
+        && echo "  systemctl --user unmask $u.service" >> "$note"
+    fi
+  done
+  ok "Rückweg notiert → $note"
+}
+
+# HUD sofort starten, wenn der Installer in einer laufenden Hyprland-Sitzung lief
+# (theme.lua startet es nur bei hyprland.start, nicht bei hyprctl reload)
+ubu_start_hud() {
+  [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || return 0
+  command -v hyprctl >/dev/null && hyprctl reload >/dev/null 2>&1 || true
+  if [ -x "$THEME/scripts/restart" ]; then
+    "$THEME/scripts/restart" >/dev/null 2>&1 || true
+    sleep 3
+    pgrep -x gjs >/dev/null 2>&1 && ok "HUD gestartet" || warn "HUD startet beim nächsten Login"
+  fi
 }

@@ -9,6 +9,7 @@
 #    --no-fish         Standard-Shell nicht auf fish umstellen
 #    --no-upgrade      kein apt full-upgrade vorab
 #    --keep-greeter    vorhandenen Login-Manager (gdm …) behalten, kein SDDM-Login/Theme-Lockscreen
+#    --keep-config     vorhandene Hyprland-Config (KoolDots, HyDE …) nicht ersetzen, Theme nur anhängen
 #    --dir PFAD        Zielordner (Standard: ~/CyberArch-Shell)
 #    --branch NAME     anderer Branch (Standard: master)
 #
@@ -28,9 +29,10 @@ while [ $# -gt 0 ]; do
     --no-fish)      export CYBERARCH_FISH=n ;;
     --no-upgrade)   export CYBERARCH_UPGRADE=n ;;
     --keep-greeter) export CYBERARCH_SDDM=n ;;
+    --keep-config)  export CYBERARCH_TAKEOVER=n ;;
     --dir)          DEST="$2"; shift ;;
     --branch)       BRANCH="$2"; shift ;;
-    -h|--help)      sed -n '2,19p' "${BASH_SOURCE[0]}" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)      sed -n '2,20p' "${BASH_SOURCE[0]}" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unbekannte Option: $1 (siehe --help)"; exit 2 ;;
   esac
   shift
