@@ -548,7 +548,8 @@ else
   [ -f "$HOME/.config/qylock/theme" ] || echo "netwatch" > "$HOME/.config/qylock/theme"
   if [ -f "$IDLECONF" ]; then
     sed -i "s#^\( *\)lock_cmd[[:space:]]*=.*#\1lock_cmd = $LOGINDST/lock.sh#" "$IDLECONF"
-    grep -q "^lock_cmd = $LOGINDST/lock.sh" "$IDLECONF" \
+    # eingerückte Zeilen mitzählen, sonst kommt bei jedem Lauf eine weitere lock_cmd-Zeile dazu
+    grep -q "^[[:space:]]*lock_cmd = $LOGINDST/lock.sh" "$IDLECONF" \
       || sed -i "/^general {/a\\  lock_cmd = $LOGINDST/lock.sh" "$IDLECONF"
     grep -q "lock_cmd = $LOGINDST/lock.sh" "$IDLECONF" \
       && ok "hypridle lock_cmd → $LOGINDST/lock.sh" \
