@@ -6,7 +6,7 @@ import { USER_DIR } from "../../env.ts"
 export type WmVal = boolean | number | string
 
 const DEF: Record<string, WmVal> = {
- wmOpacity: true, wmOpacityVal: 0.88, wmOpacityMode: "off", wmOpacityApps: "",
+ wmOpacity: true, wmOpacityVal: 0.95, wmOpacityMode: "off", wmOpacityApps: "",
  wmGlow: true, wmGlowRange: 14, wmGlowRp: 3, wmShadow: true,
  wmShadowColor: "", wmShadowAlpha: 38, wmShadowRange: 16,
  wmBorders: true, wmBorderSize: 1, wmBorderColor: "",
