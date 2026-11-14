@@ -7,7 +7,8 @@ set -euo pipefail
 
 SRC="${CYBER_SRC:-$HOME/.cache/cyberarch-build}"
 mkdir -p "$SRC"
-JOBS="$(nproc)"
+JOBS="${CYBER_JOBS:-$(nproc)}"   # compat.sh begrenzt nach RAM
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$JOBS}"
 
 # Versionen (bewusst gepinnt, damit der Build reproduzierbar bleibt)
 ASTAL_REF="${ASTAL_REF:-main}"
@@ -16,6 +17,28 @@ AGS_REF="v3.1.2"                 # entspricht aylurs-gtk-shell im AUR
 QUICKSHELL_REF="${QUICKSHELL_REF:-}"   # leer = neuester Release-Tag
 MPVPAPER_REF="${MPVPAPER_REF:-}"
 AWWW_REF="${AWWW_REF:-}"
+
+# valadoc (0.56.18) stürzt mit Graphviz 14 (Ubuntu 26.04, Stand Nov. 2026) beim Zeichnen der HTML-
+# Klassendiagramme ab (Segfault in valadoc_html_markup_writer_add_usemap) – NACHDEM die .gir geschrieben ist.
+# Astal erzeugt seine .gir über `$VALADOC --gir …`; die HTML-Doku wird nicht gebraucht. Der Wrapper
+# akzeptiert den Absturz nur, wenn die .gir in diesem Lauf neu geschrieben wurde und gültiges XML ist.
+VALADOC_WRAP="$SRC/valadoc-safe"
+cat >"$VALADOC_WRAP" <<'EOF'
+#!/usr/bin/env bash
+gir=""; prev=""
+for a in "$@"; do [ "$prev" = --gir ] && gir="$a"; prev="$a"; done
+stamp="$(mktemp)"; trap 'rm -f "$stamp"' EXIT
+ulimit -c 0   # kein Core-Dump / keine Apport-Meldung für den bekannten Absturz
+valadoc "$@"; rc=$?
+if [ "$rc" -ge 128 ] && [ -n "$gir" ] && [ "$gir" -nt "$stamp" ] \
+   && python3 -c 'import sys, xml.etree.ElementTree as E; E.parse(sys.argv[1])' "$gir" 2>/dev/null; then
+  echo "valadoc-safe: valadoc abgestürzt (Signal $((rc - 128))) nach vollständiger $gir – HTML-Doku übersprungen" >&2
+  exit 0
+fi
+exit "$rc"
+EOF
+chmod 755 "$VALADOC_WRAP"
+export VALADOC="${VALADOC:-$VALADOC_WRAP}"
 
 log() { printf '\033[38;2;119;226;242m▸\033[0m %s\n' "$*"; }
 

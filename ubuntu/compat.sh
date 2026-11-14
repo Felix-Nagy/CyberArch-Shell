@@ -16,6 +16,17 @@ if [ -z "${GLSLC:-}" ] && command -v glslangValidator >/dev/null 2>&1; then
   export GLSLANG_VALIDATOR="$(command -v glslangValidator)"
 fi
 
+# Build-Parallelität nach RAM begrenzen (≈ 2 GB pro Compiler-Job): Rio (cargo, wgpu), Quickshell (C++) und
+# awww laufen sonst mit nproc Jobs – auf 8 Threads / 8 GB RAM greift der OOM-Killer mitten im Build.
+if [ -z "${CYBER_JOBS:-}" ]; then
+  __mem_gb=$(( $(awk '/^MemTotal:/{print $2}' /proc/meminfo 2>/dev/null || echo 0) / 1048576 ))
+  CYBER_JOBS=$(( __mem_gb / 2 )); [ "$CYBER_JOBS" -ge 1 ] || CYBER_JOBS=1
+  [ "$CYBER_JOBS" -le "$(nproc)" ] || CYBER_JOBS="$(nproc)"
+  unset __mem_gb
+fi
+export CYBER_JOBS
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$CYBER_JOBS}"
+
 # ── Paket-Mapping Arch → Ubuntu ─────────────────────────────────────────────
 #   ""        -> auf Ubuntu nicht nötig (lib32, Teil eines anderen Pakets …)
 #   "@step"   -> wird aus dem Quellcode gebaut (ubuntu/build-deps.sh <step>)
@@ -162,6 +173,7 @@ sudo() {
     printf '%s\n' "$body" | command sudo tee "$f" >/dev/null || return 1
     printf '%s\n' "$body" | command sudo tee "/etc/sddm.conf.d/99-cyberarch-$(basename "$f")" >/dev/null
     ubu_sddm_overrides
+    ubu_sddm_foreign
     return
   fi
   # Debian/Ubuntu: sddm.service startet nur, wenn /etc/X11/default-display-manager auf sddm zeigt
@@ -291,7 +303,7 @@ ubu_auto_answer() {
     "GREETER CHECK")                  echo "${CYBERARCH_SDDM:-y}" ;;   # gdm & Co. → SDDM (netwatch)
     "PACMAN HOOK")                    echo y ;;   # → apt-Hook
     "CYBERSPACE · net client")        echo n ;;   # braucht WPE WebKit, gibt es für Ubuntu nicht
-    "DEFAULT SHELL · fish")           echo "${CYBERARCH_FISH:-y}" ;;
+    "DEFAULT SHELL · fish")           case "${CYBERARCH_FISH:-y}" in n) echo n ;; *) echo y ;; esac ;;   # kitty = nur in kitty
     "DESKTOP SHELL · takeover check") echo y ;;
     "HYPRLAND · load the theme")      echo y ;;
     "HYPRLAND · user.lua template")   echo y ;;
@@ -367,6 +379,30 @@ ubu_wallpaper_daemon() {
   fi
 }
 
+# Fremde SDDM-Drop-ins (andere Dotfiles/Themes): SDDM liest /etc/sddm.conf.d/ alphabetisch, Buchstaben nach
+# Ziffern – z. B. `theme.conf` (Current=Bitpunk) oder `kde_settings.conf` kommen NACH 99-cyberarch-*.conf
+# und gewinnen. Die Schlüssel, die netwatch braucht, werden dort auskommentiert (Sicherung *.vor-cyberarch).
+ubu_sddm_foreign() {
+  # Sicherungen NICHT in sddm.conf.d ablegen: SDDM liest dort jede Datei, auch ohne .conf-Endung –
+  # eine Kopie „theme.conf.vor-cyberarch“ würde als letzte gelesen und Current=Bitpunk zurückbringen.
+  local f keys='Current|DisplayServer|InputMethod|GreeterEnvironment|DisplayCommand' bakdir=/etc/sddm.conf.vor-cyberarch.d
+  # ältere Installer-Läufe legten die Sicherungen noch in sddm.conf.d ab → verschieben
+  for f in /etc/sddm.conf.d/*.vor-cyberarch; do
+    [ -f "$f" ] || continue
+    command sudo install -d -m 755 "$bakdir" && command sudo mv -f "$f" "$bakdir/$(basename "${f%.vor-cyberarch}")" \
+      && ok "SDDM: alte Sicherung $(basename "$f") → $bakdir/"
+  done
+  for f in /etc/sddm.conf.d/*; do
+    [ -f "$f" ] || continue
+    case "$(basename "$f")" in 10-netwatch.conf|20-greeter-x11.conf|99-cyberarch-*) continue ;; esac
+    grep -E "^[[:space:]]*($keys)[[:space:]]*=" "$f" >/dev/null || continue
+    command sudo install -d -m 755 "$bakdir"
+    [ -e "$bakdir/$(basename "$f")" ] || command sudo cp -p "$f" "$bakdir/$(basename "$f")"
+    command sudo sed -i -E "s/^([[:space:]]*($keys)[[:space:]]*=)/# (CyberArch) \1/" "$f" \
+      && ok "SDDM: $(basename "$f") überstimmt netwatch nicht mehr (Sicherung: $bakdir/$(basename "$f"))"
+  done
+}
+
 ubu_finish() {
   hdr "UBUNTU · Abschluss"
   if [ "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" = "$(readlink -f /usr/lib/systemd/system/sddm.service 2>/dev/null)" ]; then
@@ -386,6 +422,7 @@ ubu_finish() {
         /etc/sddm.conf
       ok "/etc/sddm.conf auf netwatch umgestellt (vorher: $bak)"
     fi
+    ubu_sddm_foreign
   fi
   if [ -d /var/lib/sddm ] && [ -f /usr/share/wayland-sessions/hyprland.desktop ]; then
     # beim ersten Login Hyprland + diesen Benutzer vorauswählen (sonst ggf. GNOME)
@@ -397,8 +434,20 @@ ubu_finish() {
   ubu_greeter_reaper
   ubu_wallpaper_daemon
   ubu_user_units
+  ubu_terminal_default
   ubu_takeover
-  ubu_start_hud
+}
+
+# Apps mit Terminal=true (btop, htop …) startet das Apps-Menü über Gio → xdg-terminal-exec. Ohne Liste nimmt
+# das das erste gefundene Terminal – hier oft das cool-retro-term-AppImage, das „-e btop“ nicht zuverlässig
+# startet. kitty als Standard (wie SUPER+Enter); eine eigene Liste des Benutzers bleibt unangetastet.
+ubu_terminal_default() {
+  local f="$HOME/.config/xdg-terminals.list"
+  command -v kitty >/dev/null 2>&1 || return 0
+  if [ ! -s "$f" ]; then
+    printf '# Standard-Terminal für xdg-terminal-exec (Apps-Menü: btop, htop …)\nkitty.desktop\n' > "$f"
+    ok "Standard-Terminal → kitty ($f)"
+  fi
 }
 
 # Ubuntu-Pakete aktivieren hypridle.service und hyprpaper.service global (graphical-session.target).
@@ -480,9 +529,18 @@ ubu_takeover() {
 
   # konkurrierende Leisten/Benachrichtigungsdienste: beenden und als Benutzerdienst maskieren
   local p u
-  for p in waybar swaync dunst mako hyprpaper ags-v1; do
+  for p in waybar swaync dunst mako hyprpaper ags-v1 nwg-dock-hyprland cava nm-applet blueman-applet blueman-tray; do
     if pgrep -x "$p" >/dev/null 2>&1; then pkill -x "$p" 2>/dev/null && ok "beendet: $p"; fi
   done
+  # Fremde Quickshell-Oberflächen (z. B. „qs -c overview“, „qs -p …/qs-hyprview“, Caelestia, Noctalia) liegen sonst
+  # über dem HUD. Das Theme nutzt Quickshell nur für den Lockscreen (…/lock_shell.qml) – der bleibt unberührt.
+  local pid args n=0
+  for pid in $(pgrep -x quickshell; pgrep -x qs); do
+    args="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)" || continue
+    case "$args" in *lock_shell.qml*) continue ;; esac
+    kill "$pid" 2>/dev/null && n=$((n + 1))
+  done
+  if [ "$n" -gt 0 ]; then ok "beendet: $n fremde Quickshell-Oberfläche(n)"; fi
   for u in swaync dunst mako waybar; do
     if systemctl --user is-enabled "$u.service" 2>/dev/null | grep -E '^(enabled|static|alias)' >/dev/null; then
       systemctl --user mask "$u.service" >/dev/null 2>&1 && ok "Benutzerdienst $u maskiert (HUD übernimmt)" \

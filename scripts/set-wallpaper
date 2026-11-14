@@ -87,6 +87,33 @@ fi
 case "${wallpaper##*.}" in
     mp4|webm|mkv|mov)
         if command -v mpvpaper >/dev/null 2>&1; then
+            # Leistung: Die Theme-Videos sind teils 4K/60 fps. Auf Laptops mit 1080p-Display und iGPU kostet
+            # das Dekodieren + Herunterskalieren dauerhaft viel CPU/GPU. Ist das Video größer als der größte
+            # Monitor oder > 30 fps, wird einmalig eine passende Kopie im Cache erzeugt (im Hintergrund,
+            # niedrige Priorität) und ab dann benutzt. CYBERARCH_WALL_SCALE=0 schaltet das ab.
+            if [ "${CYBERARCH_WALL_SCALE:-1}" != 0 ] && command -v ffprobe >/dev/null 2>&1 && command -v ffmpeg >/dev/null 2>&1 \
+               && command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+                mon_h="$(hyprctl monitors -j 2>/dev/null | jq '[.[] | (if (.transform % 2) == 1 then .width else .height end)] | max // 0' 2>/dev/null)"
+                read -r v_w v_h v_fps < <(ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate \
+                    -of csv=p=0 "$wallpaper" 2>/dev/null | awk -F, 'NR==1 {split($3,f,"/"); printf "%d %d %d\n", $1, $2, (f[2] > 0 ? f[1]/f[2] : f[1])}')
+                if [ "${mon_h:-0}" -gt 0 ] && [ "${v_h:-0}" -gt 0 ] && { [ "$v_h" -gt "$mon_h" ] || [ "${v_fps:-0}" -gt 31 ]; }; then
+                    t_h=$(( v_h > mon_h ? mon_h : v_h )); t_h=$(( t_h / 2 * 2 ))
+                    scaled_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/cyberarch/wallpaper-scaled"
+                    scaled="$scaled_dir/$(printf '%s' "$wallpaper" | md5sum | cut -c1-12)-${t_h}p30.mp4"
+                    if [ -s "$scaled" ] && [ "$scaled" -nt "$wallpaper" ]; then
+                        wallpaper="$scaled"
+                    elif ! pgrep -f "ffmpeg .*${scaled##*/}" >/dev/null 2>&1; then
+                        mkdir -p "$scaled_dir"
+                        orig="$wallpaper"
+                        ( nice -n 19 ionice -c3 ffmpeg -nostdin -y -loglevel error -i "$orig" -an \
+                              -vf "scale=-2:${t_h}:flags=bicubic,fps=30" -c:v libx264 -preset veryfast -crf 23 \
+                              -pix_fmt yuv420p -movflags +faststart "$scaled.part.mp4" \
+                            && mv -f "$scaled.part.mp4" "$scaled" \
+                            && pgrep -f -- "mpvpaper .*$(printf '%s' "$orig" | sed 's/[][\\.*^$]/\\&/g')" >/dev/null \
+                            && exec "$0" "$orig" ) >>"${HOME}/.cache/cyberpunk-mpvpaper.log" 2>&1 &
+                    fi
+                fi
+            fi
             old_mpvp="$(pgrep -x mpvpaper 2>/dev/null || true)"
             old_awww="$(pgrep -x awww-daemon 2>/dev/null || true)"
             sock="/tmp/cyberwall-$$.sock"

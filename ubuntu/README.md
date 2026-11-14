@@ -23,6 +23,8 @@ Hyprland mit dem HUD startet. Protokoll: `~/cyberarch-install-<datum>.log`.
 | `--no-upgrade` | kein `apt full-upgrade` vorab |
 | `--keep-greeter` | GDM o. ä. behalten (dann kein netwatch-Login / Theme-Lockscreen) |
 | `--keep-config` | vorhandene Hyprland-Config (KoolDots, HyDE, ML4W …) nicht ersetzen, Theme nur anhängen |
+| `--fish-kitty` | fish mit dem Original-Theme (dangerous + Samurai-Logo) nur in kitty, Login-Shell bleibt bash/zsh |
+| `--no-rio` | GPU-Terminal Rio nicht kompilieren (spart 20–60 min auf schwachen Rechnern; SUPER+Enter = kitty) |
 | `--dir PFAD` / `--branch NAME` | anderer Zielordner / Branch |
 
 Optionen hinter den Befehl hängen, z. B. `bash <(curl -fsSL …/setup.sh) --no-fish`.
@@ -94,6 +96,15 @@ Eigene Ergänzungen gehören in `~/.config/hypr/user.lua` – die Datei bleibt b
 | apt nach dem ersten Boot blockiert (unattended-upgrades) | apt wartet bis 15 min auf die Sperre |
 | Ubuntu aktiviert `hypridle.service` global, das Theme startet hypridle zusätzlich → zwei Lockscreens pro Sperre, einer bleibt mit ~270 MB hängen | `hypridle.service` und `hyprpaper.service` für den Benutzer maskiert; `lock.sh` startet per `flock` nur einen Lockscreen |
 | netwatch-Greeter bleibt nach dem Login hängen („Greeter stopping“) und belegt ~1,5 GB RAM | Aufräumdienst `cyberarch-greeter-reaper` beendet ihn, sobald eine Benutzersitzung läuft |
+| fremde Drop-ins wie `/etc/sddm.conf.d/theme.conf` werden NACH `99-cyberarch-*` gelesen (Buchstaben nach Ziffern) → altes Login-Theme | deren `Current`/`InputMethod`/… werden auskommentiert; Sicherungen in `/etc/sddm.conf.vor-cyberarch.d/` (SDDM liest in `sddm.conf.d` jede Datei, auch ohne `.conf`) |
+| `valadoc` stürzt mit Graphviz 14 ab (Segfault beim HTML-Diagramm) → Astal-Build bricht ab | Wrapper `valadoc-safe` akzeptiert den Absturz nur bei vollständig geschriebener `.gir` |
+| 8 Compiler-Jobs auf 8 GB RAM → OOM-Killer beim Build | Jobs nach RAM begrenzt (≈ 2 GB pro Job, `CYBER_JOBS`) |
+| Neustart während des langen Rio-Builds → alte Leisten + HUD gleichzeitig, alter Login | Übernahme/SDDM/Dienste laufen jetzt VOR dem Rio-Build |
+| alte Oberflächen laufen weiter (`qs -c overview`, eigene Quickshell-HUDs, nm-applet, blueman, cava) | werden bei der Übernahme beendet (Theme-Lockscreen ausgenommen) |
+| Terminal-Apps (btop, htop) aus dem Apps-Menü starten nicht – xdg-terminal-exec nimmt cool-retro-term | `~/.config/xdg-terminals.list` → kitty (eigene Liste bleibt) |
+| Laptops mit zwei Akkus (ThinkPad BAT0+BAT1): HUD zeigte nur den ersten, „Not charging“ als 0 % | Gesamtstand aller System-Akkus nach Energie |
+| 4K/60-Video-Wallpaper auf 1080p-Laptop mit iGPU → dauerhafte Last | einmalige Kopie in Monitorauflösung/30 fps im Cache (`CYBERARCH_WALL_SCALE=0` schaltet ab) |
+| HUD zeichnet beim Laden 11×/s die ganze Anzeige neu (Ladefunken) | nur noch der kleine Bereich am Blitz (~18 % → 10 % eines Kerns) |
 ## Grenzen
 
 - **CyberSpace-Client** braucht WPE WebKit, das es für Ubuntu nicht gibt (wird im Automatikmodus übersprungen).

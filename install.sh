@@ -1002,6 +1002,13 @@ if [ "$ans" = "y" ] || [ "$ans" = "Y" ]; then
     printf '\nif status is-interactive\n    if type -q kitten\n        kitten icat --align left $HOME/.config/hypr/themes/cyberpunk/assets/cool-retro-term/samurai.png\n    end\nend\n' >> "$CFG"
   fi
   FISH_PATH="/usr/bin/fish"
+  if [ "${CYBERARCH_FISH:-}" = kitty ]; then
+    # Nur kitty startet fish (mit Theme), die Login-Shell bleibt unverändert
+    mkdir -p "$HOME/.config/kitty"
+    printf '# CyberArch: kitty startet fish mit dem dangerous-Theme (Login-Shell bleibt %s)\nshell %s\n' \
+      "${SHELL:-unverändert}" "$FISH_PATH" > "$HOME/.config/kitty/cyberarch-local.conf"
+    ok "kitty startet fish |::| Login-Shell bleibt ${SHELL:-unverändert}"
+  else
   if ! grep -q "$FISH_PATH" /etc/shells 2>/dev/null; then
     echo "Adding $FISH_PATH to /etc/shells..."
     echo "$FISH_PATH" | sudo tee -a /etc/shells
@@ -1028,6 +1035,7 @@ if [ "$ans" = "y" ] || [ "$ans" = "Y" ]; then
   else
     echo "ERROR: chsh failed."
   fi
+  fi  # CYBERARCH_FISH=kitty
 fi
 
 HYDIR="$HOME/.config/hypr"
@@ -1457,6 +1465,15 @@ block_comment "$USERCONF"
 # Cool retro term gives a cool 'Arasaka UI' but in leverage of alot of CPU
 # Rio terminal uses GPU and has some nice 'glassy effects' for the theme without burning so much memory
 # and also has image support unlike CRT.
+# Ubuntu: Abschluss (vorhandene Config übernehmen, SDDM, Benutzerdienste) VOR dem Rio-Build. Rio kompiliert
+# 20–60 min; wer währenddessen neu startet, hätte sonst alte Leisten + HUD gleichzeitig und den alten Login.
+if declare -F ubu_finish >/dev/null; then ubu_finish; fi
+
+GTKEY="SUPER + T"   # auch für die Abschlussübersicht, wenn der Rio-Build übersprungen wird
+if [ "${CYBERARCH_RIO:-y}" = n ]; then
+  hdr "CYBER TERMINAL"
+  warn "Rio-Build übersprungen (CYBERARCH_RIO=n) |::| später: CYBERARCH_RIO=y ./install.sh"
+else
 hdr "CYBER TERMINAL"
 GTSRC="$THEME/assets/rio"
 GTCFG="$HOME/.config/rio"
@@ -1618,6 +1635,7 @@ else
       ok "Cyber Terminal installed |::| use $GTKEY to open the Terminal."
     fi
 fi
+fi  # CYBERARCH_RIO
 
 hdr "ACTIVATE THEMING"
 [ -x "$THEME/scripts/apply_theme" ] && "$THEME/scripts/apply_theme" && ok "icon/cursor/kitty/kvantum theming applied" || warn "apply_theme not run"
@@ -1667,8 +1685,8 @@ if [ ! -f "$STATE_FILE" ]; then
   mv -f -- "$STATE_FILE.tmp" "$STATE_FILE"
 fi
 
-# Ubuntu: Nacharbeiten (SDDM-Startdatei, Hyprland als Standardsitzung) aus ubuntu/compat.sh
-! declare -F ubu_finish >/dev/null || ubu_finish
+# Ubuntu: HUD in laufender Sitzung (neu) starten – ubu_finish lief schon vor dem Rio-Build
+! declare -F ubu_start_hud >/dev/null || ubu_start_hud
 
 printf "${RED}${B}"
 cat <<'EOF'

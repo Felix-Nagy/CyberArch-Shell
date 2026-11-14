@@ -43,16 +43,33 @@ const gaugeColor = (k: string, p: number): RGB => isHeadroom(k) ? goodLowColor(p
 const read = (p: string) => { try { const [ok, d] = GLib.file_get_contents(p); return ok ? new TextDecoder().decode(d) : "" } catch { return "" } }
 
 
-const batDir = ((): string | null => {
+// Alle System-Akkus (z. B. ThinkPads mit BAT0 + BAT1), ohne Akkus von Maus/Headset (scope=Device).
+// Füllstand = Summe Energie / Summe Kapazität – so wie upower ihn als Gesamtwert anzeigt.
+const batDirs = ((): string[] => {
+    const out: string[] = []
     try { const d = GLib.Dir.open("/sys/class/power_supply", 0); let n: string | null
-        while ((n = d.read_name())) { const p = `/sys/class/power_supply/${n}`; if (read(`${p}/type`).trim() === "Battery") return p } } catch {}
-    return null
+        while ((n = d.read_name())) { const p = `/sys/class/power_supply/${n}`
+            if (read(`${p}/type`).trim() === "Battery" && read(`${p}/scope`).trim() !== "Device") out.push(p) } } catch {}
+    return out.sort()
 })()
-const readBat = () => batDir ? (parseInt(read(`${batDir}/capacity`).trim()) || 0) / 100 : 1
-const HAS_BAT = batDir !== null
+const readBat = () => {
+    let now = 0, full = 0, cap = 0, n = 0
+    for (const p of batDirs) {
+        if (read(`${p}/present`).trim() === "0") continue
+        n++; cap += parseInt(read(`${p}/capacity`).trim()) || 0
+        now += parseInt((read(`${p}/energy_now`) || read(`${p}/charge_now`)).trim()) || 0
+        full += parseInt((read(`${p}/energy_full`) || read(`${p}/charge_full`)).trim()) || 0
+    }
+    if (!n) return batDirs.length ? 0 : 1
+    return full > 0 ? Math.min(1, now / full) : cap / n / 100
+}
+const HAS_BAT = batDirs.length > 0
 const YELB: RGB = [255, 214, 31] as any
 let batStatus = ""
-const readBatStatus = () => { batStatus = batDir ? read(`${batDir}/status`).trim() : "" }
+const readBatStatus = () => {
+    const st = batDirs.map((p) => read(`${p}/status`).trim()).filter(Boolean)
+    batStatus = st.includes("Charging") ? "Charging" : st.includes("Discharging") ? "Discharging" : (st[0] || "")
+}
 const isCharging = () => batStatus === "Charging"
 readBatStatus()
 
@@ -464,8 +481,18 @@ export const Monitors = (mon?: any) => {
     cpu.frac.subscribe(pump); ram.frac.subscribe(pump); poke.subscribe(pump)
     onConfigChange(() => { sampleMetrics(); pump(); area.queue_draw() })
     let chargeT: any = null
+    // Ladefunken neben dem Blitz (u 2–12, v 70–94): nur diesen Ausschnitt neu zeichnen. Vorher wurde die ganze
+    // projizierte Anzeige (Glows, Scanlines, Texte) 11×/s neu gerastert, solange das Netzteil steckt –
+    // auf Laptops mit iGPU der größte Dauerposten des HUD.
+    const chargeRect = (): [number, number, number, number] => {
+        const pts = [[2, 70], [12, 70], [12, 94], [2, 94]].map(([u, v]) => plane.project(u, v))
+        const xs = pts.map(p => p[0] * S), ys = pts.map(p => p[1] * S)
+        const x = Math.floor(Math.min(...xs)) - 4, y = Math.floor(Math.min(...ys)) - 4
+        return [x, y, Math.ceil(Math.max(...xs)) + 4 - x, Math.ceil(Math.max(...ys)) + 4 - y]
+    }
+    const chargeDraw = () => { const [x, y, w, h] = chargeRect(); area.queue_draw_area(x, y, w, h) }
     const chargePump = interval(1000, () => {
-        if (animOn("animGauge") && slotKey("bat") === "battery" && isCharging()) { if (!chargeT) chargeT = interval(90, () => area.queue_draw()) }
+        if (animOn("animGauge") && slotKey("bat") === "battery" && isCharging()) { if (!chargeT) chargeT = interval(90, chargeDraw) }
         else if (chargeT) { chargeT.cancel(); chargeT = null }
     })
     area.connect("destroy", () => { if (t) t.cancel(); if (chargeT) chargeT.cancel(); chargePump.cancel() })

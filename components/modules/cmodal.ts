@@ -1050,18 +1050,21 @@ const drawProcList = (ctx, push, x, y, w, h, items, scroll, sel, pinned, onClick
     if (items.length > vis) { const bh = lh * vis / items.length, by = listTop + (lh - bh) * (scroll / maxS || 0); ctx.setSourceRGBA(BR, BG, BB, 0.5); ctx.rectangle(x + w + 4, by, 3, bh); ctx.fill() }
 }
 
+// Gesamtstand aller System-Akkus (BAT0 + BAT1 …) → "<prozent> <status>" oder "none".
+// Prozent zuerst: der Status kann Leerzeichen enthalten ("Not charging").
+const BAT_SH = 'e=0; f=0; c=0; n=0; s=""; for d in /sys/class/power_supply/*; do [ "$(cat "$d/type" 2>/dev/null)" = Battery ] || continue; [ "$(cat "$d/scope" 2>/dev/null)" = Device ] && continue; [ "$(cat "$d/present" 2>/dev/null)" = 0 ] && continue; n=$((n+1)); x=$(cat "$d/status" 2>/dev/null); case "$x" in Charging) s=Charging ;; Discharging) [ "$s" = Charging ] || s=Discharging ;; *) [ -n "$s" ] || s="$x" ;; esac; c=$((c+$(cat "$d/capacity" 2>/dev/null || echo 0))); e=$((e+$(cat "$d/energy_now" 2>/dev/null || cat "$d/charge_now" 2>/dev/null || echo 0))); f=$((f+$(cat "$d/energy_full" 2>/dev/null || cat "$d/charge_full" 2>/dev/null || echo 0))); done; if [ "$n" = 0 ]; then echo none; elif [ "$f" -gt 0 ]; then echo "$((e*100/f)) $s"; else echo "$((c/n)) $s"; fi'
 const PROFILES = [[t("cfg.sys.performance"), "performance"], [t("cfg.sys.neutral"), "balanced"], [t("cfg.sys.economic"), "power-saver"]]
 const BatCtrl = () => {
     const st: any = { present: true, status: "", pct: 0, rate: 0, mins: 0, perMin: 0, profile: "balanced", apps: [], hist: [] }
     let ctrl
     const refresh = () => {
-        sh("B=''; for d in /sys/class/power_supply/*; do [ \"$(cat \"$d/type\" 2>/dev/null)\" = Battery ] && B=$d && break; done; if [ -z \"$B\" ]; then echo none; else echo \"$(cat \"$B/status\" 2>/dev/null) $(cat \"$B/capacity\" 2>/dev/null)\"; fi").then((o) => {
+        sh(BAT_SH).then((o) => {
             const t = o.trim()
             if (t === "none" || t === "") st.present = false
-            else { st.present = true; const [s, c] = t.split(/\s+/); st.status = s; st.pct = parseInt(c) || 0 }
+            else { st.present = true; const m = t.match(/^(\d+)\s*(.*)$/); st.pct = m ? parseInt(m[1]) : 0; st.status = m ? m[2] : "" }
             ctrl.requestDraw()
         })
-        sh("LC_ALL=C upower -i \"$(upower -e 2>/dev/null | grep -m1 -i battery)\" 2>/dev/null | grep -iE 'energy-rate|time to (empty|full)|energy-full:'").then((o) => {
+        sh("LC_ALL=C upower -i /org/freedesktop/UPower/devices/DisplayDevice 2>/dev/null | grep -iE 'energy-rate|time to (empty|full)|energy-full:'").then((o) => {
             const r = o.match(/energy-rate:\s*([\d.]+)/i); st.rate = r ? parseFloat(r[1]) : 0
             const ef = o.match(/energy-full:\s*([\d.]+)/i); const full = ef ? parseFloat(ef[1]) : 0
             const tm = o.match(/time to (?:empty|full):\s*([\d.]+)\s*(\w+)/i)
@@ -1339,7 +1342,7 @@ fi`).then(() => timeout(200, fetchInitApps))
         sh("uname -m").then((o) => { st.sysInfo.arch = o.trim() || "—"; ctrl.requestDraw() })
       sh("ps -e --no-headers 2>/dev/null | wc -l").then((o) => { st.sysInfo.procCount = o.trim() || "—"; ctrl.requestDraw() })
     sh("ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \\K\\S+'").then((o) => { st.sysInfo.localIp = o.trim() || "—"; ctrl.requestDraw() })
-        sh("cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1").then((o) => { st.sysInfo.battery = o.trim() ? `${o.trim()}%` : "N/A"; ctrl.requestDraw() })
+        sh(BAT_SH).then((o) => { const p = o.trim().match(/^\d+/); st.sysInfo.battery = p ? `${p[0]}%` : "N/A"; ctrl.requestDraw() })
     }
   const fetchCpuExtra = () => {
       sh("lscpu 2>/dev/null").then((o) => {

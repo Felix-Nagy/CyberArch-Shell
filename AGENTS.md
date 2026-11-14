@@ -250,3 +250,29 @@ Offene Punkte / Risiken:
   erkennt eingerückte Zeilen nicht; Host hatte 3) → Check auf `^[[:space:]]*lock_cmd`, getestet mit zwei Läufen.
   Host-`hypridle.conf` bereinigt (Sicherung `hypridle.conf.bak.*`). Hinweis: `vm/`, `screens/` und die Patch-Variante
   (`install-ubuntu.sh` usw.) liegen nur im lokalen Projektordner, nicht im Fork.
+
+- 2026-11-14: **Zweiter Rechner: Laptop `ppm`** (ThinkPad, i5 Kaby Lake-R, UHD 620, 7 GB RAM + 4 GB Swap, eDP-1 1920x1080,
+  BAT0+BAT1, KoolDots + GDM, zsh, kb `de`). Installiert mit `CYBERARCH_YES=1 CYBERARCH_FISH=kitty CYBERARCH_RIO=n`.
+  Gefundene und behobene Fehler (alle im Fork-Installer):
+  - Fremde SDDM-Drop-ins `theme.conf` (Current=Bitpunk) / `kde_settings.conf` sortieren NACH `99-cyberarch-*` →
+    `ubu_sddm_foreign` kommentiert Current/DisplayServer/InputMethod/GreeterEnvironment/DisplayCommand aus.
+    **Falle:** SDDM liest in `sddm.conf.d` JEDE Datei, auch ohne `.conf` → Sicherung `theme.conf.vor-cyberarch` dort
+    brachte Bitpunk zurück. Sicherungen jetzt in `/etc/sddm.conf.vor-cyberarch.d/`.
+  - `valadoc` 0.56.18 + Graphviz 14.1 → Segfault in `valadoc_html_markup_writer_add_usemap` NACH dem Schreiben der .gir
+    → Astal-Build (quarrel) bricht ab. `build-deps.sh` setzt `VALADOC=$SRC/valadoc-safe` (akzeptiert Signal nur bei
+    frisch geschriebener, gültiger .gir).
+  - Build-Jobs nach RAM (`CYBER_JOBS`, `CARGO_BUILD_JOBS`, ≈ 2 GB/Job → hier 3).
+  - Nutzer startete während des Rio-Builds neu → Übernahme/SDDM liefen nie. `ubu_finish` läuft jetzt VOR „CYBER TERMINAL“,
+    `ubu_start_hud` am Ende; `--no-rio` / `CYBERARCH_RIO=n`. (Dabei `GTKEY` vor den Rio-Block gezogen, sonst unbound.)
+  - Übernahme beendet jetzt jede Quickshell-Instanz außer `lock_shell.qml` (KoolDots: `qs --log-rules … -c overview`,
+    `-p qs-hyprview`, altes `-c cp-hud`) sowie nm-applet, blueman-applet/-tray, cava, nwg-dock.
+  - Apps-Menü: Gio → xdg-terminal-exec wählte cool-retro-term (AppImage), btop startete nicht →
+    `~/.config/xdg-terminals.list` = kitty.desktop (`ubu_terminal_default`).
+  - `--fish-kitty`: fish + OMF dangerous + Samurai nur in kitty (`~/.config/kitty/cyberarch-local.conf: shell fish`,
+    Theme-kitty.conf hat `globinclude cyberarch-local*.conf`), Login-Shell bleibt zsh.
+  - Akku: HUD/Modal/System-Info nehmen alle System-Akkus (Energie-Summe, scope≠Device); Status „Not charging“ machte 0 %.
+  - Performance: Video-Wallpaper 4K60 → `set-wallpaper` erzeugt Kopie in Monitorhöhe/30 fps unter
+    `~/.cache/cyberarch/wallpaper-scaled/` (nice/ionice, danach automatischer Wechsel). HUD-Ladefunken zeichneten die
+    ganze Gauge-Fläche 11×/s neu (gemessen mit temporärem draw-Zähler) → `queue_draw_area` nur am Blitz: gjs 18 % → 10 %.
+    Leerlauf danach ~96 % idle. strace/perf ohne root gesperrt (ptrace_scope 1, perf_event_paranoid 4).
+  - Nicht verifiziert: netwatch-Greeter nach den Sicherungs-Fix (braucht Neustart), Rio auf diesem Laptop (übersprungen).

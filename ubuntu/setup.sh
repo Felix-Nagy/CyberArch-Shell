@@ -7,9 +7,11 @@
 #
 #    --interactive     alle Fragen des Installers selbst beantworten
 #    --no-fish         Standard-Shell nicht auf fish umstellen
+#    --fish-kitty      fish + Theme nur in kitty, Login-Shell (bash/zsh) bleibt
 #    --no-upgrade      kein apt full-upgrade vorab
 #    --keep-greeter    vorhandenen Login-Manager (gdm …) behalten, kein SDDM-Login/Theme-Lockscreen
 #    --keep-config     vorhandene Hyprland-Config (KoolDots, HyDE …) nicht ersetzen, Theme nur anhängen
+#    --no-rio          GPU-Terminal Rio nicht kompilieren (spart 20–60 min auf schwachen Rechnern)
 #    --dir PFAD        Zielordner (Standard: ~/CyberArch-Shell)
 #    --branch NAME     anderer Branch (Standard: master)
 #
@@ -27,9 +29,11 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --interactive)  export CYBERARCH_YES=0 ;;
     --no-fish)      export CYBERARCH_FISH=n ;;
+    --fish-kitty)   export CYBERARCH_FISH=kitty ;;
     --no-upgrade)   export CYBERARCH_UPGRADE=n ;;
     --keep-greeter) export CYBERARCH_SDDM=n ;;
     --keep-config)  export CYBERARCH_TAKEOVER=n ;;
+    --no-rio)       export CYBERARCH_RIO=n ;;
     --dir)          DEST="$2"; shift ;;
     --branch)       BRANCH="$2"; shift ;;
     -h|--help)      sed -n '2,20p' "${BASH_SOURCE[0]}" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 0 ;;
