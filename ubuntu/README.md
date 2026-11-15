@@ -95,6 +95,7 @@ Eigene Ergänzungen gehören in `~/.config/hypr/user.lua` – die Datei bleibt b
 | Codeberg/GitHub kurz nicht erreichbar | Klonen/Downloads mit Wiederholungen |
 | apt nach dem ersten Boot blockiert (unattended-upgrades) | apt wartet bis 15 min auf die Sperre |
 | Ubuntu aktiviert `hypridle.service` global, das Theme startet hypridle zusätzlich → zwei Lockscreens pro Sperre, einer bleibt mit ~270 MB hängen | `hypridle.service` und `hyprpaper.service` für den Benutzer maskiert; `lock.sh` startet per `flock` nur einen Lockscreen |
+| Laptop zuklappen: Suspend startet, bevor der Lockscreen steht → nach dem Aufklappen ist kurz der Desktop bedienbar | `lock_shell.qml` setzt logind-`LockedHint`, sobald die Sperre bestätigt ist; `before_sleep_cmd` = `lock-before-sleep.sh` wartet darauf (max. ~4 s) |
 | netwatch-Greeter bleibt nach dem Login hängen („Greeter stopping“) und belegt ~1,5 GB RAM | Aufräumdienst `cyberarch-greeter-reaper` beendet ihn, sobald eine Benutzersitzung läuft |
 | fremde Drop-ins wie `/etc/sddm.conf.d/theme.conf` werden NACH `99-cyberarch-*` gelesen (Buchstaben nach Ziffern) → altes Login-Theme | deren `Current`/`InputMethod`/… werden auskommentiert; Sicherungen in `/etc/sddm.conf.vor-cyberarch.d/` (SDDM liest in `sddm.conf.d` jede Datei, auch ohne `.conf`) |
 | `valadoc` stürzt mit Graphviz 14 ab (Segfault beim HTML-Diagramm) → Astal-Build bricht ab | Wrapper `valadoc-safe` akzeptiert den Absturz nur bei vollständig geschriebener `.gir` |

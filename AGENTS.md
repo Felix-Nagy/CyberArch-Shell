@@ -276,3 +276,9 @@ Offene Punkte / Risiken:
     ganze Gauge-Fläche 11×/s neu (gemessen mit temporärem draw-Zähler) → `queue_draw_area` nur am Blitz: gjs 18 % → 10 %.
     Leerlauf danach ~96 % idle. strace/perf ohne root gesperrt (ptrace_scope 1, perf_event_paranoid 4).
   - Nicht verifiziert: netwatch-Greeter nach den Sicherungs-Fix (braucht Neustart), Rio auf diesem Laptop (übersprungen).
+
+- 2026-11-15: **Lockscreen nach Zuklappen zu spät** (Laptop `ppm`). `before_sleep_cmd = loginctl lock-session &` kehrte sofort
+  zurück, logind suspendierte in derselben Sekunde („Lid closed“ → „Suspending…“) → Quickshell-Lock erst nach dem Resume
+  fertig, Desktop kurz bedienbar. Fix: `lock_shell.qml` setzt `LockedHint` per `SetLockedHint` bei `WlSessionLock.secure`,
+  neues `components/login/lock-before-sleep.sh` sperrt und wartet darauf (max. ~4 s, danach 0,3 s Reserve).
+  Installer setzt `before_sleep_cmd` auf das Skript (bestehende und neue `hypridle.conf`).

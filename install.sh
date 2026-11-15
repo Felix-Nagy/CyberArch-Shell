@@ -539,7 +539,7 @@ if [ ! -f "$USER_DIR/wallpaper.lua" ]; then
 else
   ok "wallpaper.lua kept → $USER_DIR/wallpaper.lua"
 fi
-chmod +x "$LOGINDST/lock.sh" 2>/dev/null
+chmod +x "$LOGINDST/lock.sh" "$LOGINDST/lock-before-sleep.sh" 2>/dev/null
 IDLECONF="$HOME/.config/hypr/hypridle.conf"
 if [ "$LOCK_STACK" != 1 ]; then
   warn "hypridle lock_cmd left alone |::| $CUR_DM keeps owning the lock"
@@ -554,9 +554,17 @@ else
     grep -q "lock_cmd = $LOGINDST/lock.sh" "$IDLECONF" \
       && ok "hypridle lock_cmd → $LOGINDST/lock.sh" \
       || warn "hypridle lock_cmd refused the rewrite |::| eyeball $IDLECONF by hand"
+    # Vor dem Suspend warten, bis der Lock wirklich steht; sonst schläft der Laptop
+    # vor dem Lockscreen ein und nach dem Aufklappen ist kurz der Desktop bedienbar.
+    if grep -q "^[[:space:]]*before_sleep_cmd[[:space:]]*=" "$IDLECONF"; then
+      sed -i "s#^\( *\)before_sleep_cmd[[:space:]]*=.*#\1before_sleep_cmd = $LOGINDST/lock-before-sleep.sh#" "$IDLECONF"
+    else
+      sed -i "/^general {/a\\  before_sleep_cmd = $LOGINDST/lock-before-sleep.sh" "$IDLECONF"
+    fi
+    ok "hypridle before_sleep_cmd → $LOGINDST/lock-before-sleep.sh"
   else
     mkdir -p "$(dirname "$IDLECONF")"
-    printf 'general {\n  lock_cmd = %s/lock.sh\n  before_sleep_cmd = loginctl lock-session\n}\n' "$LOGINDST" > "$IDLECONF"
+    printf 'general {\n  lock_cmd = %s/lock.sh\n  before_sleep_cmd = %s/lock-before-sleep.sh\n}\n' "$LOGINDST" "$LOGINDST" > "$IDLECONF"
     ok "created $IDLECONF with lock_cmd → $LOGINDST/lock.sh"
   fi
 fi

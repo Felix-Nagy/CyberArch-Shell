@@ -86,6 +86,11 @@ ShellRoot {
             WlSessionLock {
                 id: lock
                 locked: shellRoot.sessionLocked
+                // Tell logind once the compositor confirms the lock, so the
+                // before-sleep hook can wait for it before suspending.
+                onSecureChanged: Quickshell.execDetached(["busctl", "call", "org.freedesktop.login1",
+                    "/org/freedesktop/login1/session/auto", "org.freedesktop.login1.Session",
+                    "SetLockedHint", "b", secure ? "true" : "false"])
                 surface: Component {
                     WlSessionLockSurface {
                         color: "black"
