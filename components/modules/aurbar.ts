@@ -142,6 +142,11 @@ const placeWin = () => {
     } catch {}
 }
 
+const armAutoHide = () => {
+    if (autoT) { autoT.cancel(); autoT = null }
+    autoT = timeout(30000, () => { autoT = null; startOut() })
+}
+
 export const showAurBar = () => {
     if (dismissed || count <= 0 || phase !== "hidden") return
     mode = "update"; cTitle = t("cfg.aur.available"); cLabel = t("cfg.aur.new_gigs"); cValue = `${count}`; cShowU = true
@@ -149,6 +154,7 @@ export const showAurBar = () => {
     placeWin()
     if (win) win.visible = true
     phase = "circle"; phaseStart = Date.now(); kick()
+    armAutoHide()
 }
 
 export const showThemeBar = () => {
@@ -158,6 +164,7 @@ export const showThemeBar = () => {
     placeWin()
     if (win) win.visible = true
     phase = "circle"; phaseStart = Date.now(); kick()
+    armAutoHide()
 }
 
 export const showInstalled = (title: string, info: string) => {
